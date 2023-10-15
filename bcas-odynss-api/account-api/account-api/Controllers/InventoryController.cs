@@ -4,55 +4,65 @@ using System.Data;
 using Dapper;
 using account_api.Models;
 using System.Data.Common;
+using System.Text.Json;
+using account_api.Repository;
+using Newtonsoft.Json.Linq;
 
 namespace account_api.Controllers
 {
+    
+
     [Route("api/[controller]")]
     [ApiController]
+
     public class InventoryController : ControllerBase
     {
         private readonly IConfiguration _configuration;
 
+        private readonly InventoryRepo _inventoryRepo;
+
         public InventoryController(IConfiguration configuration)
         {
             _configuration = configuration;
+            string connectionString = configuration.GetConnectionString("InventoryConnection");
+            _inventoryRepo = new InventoryRepo(connectionString);
         }
 
         [HttpPost]
-[Route("NewTable")]
-public IActionResult CreateTable([FromQuery] string tableName)
-{
-    string connectionString = _configuration.GetConnectionString("InventoryConnection");
-
-    using (IDbConnection connection = new SqlConnection(connectionString))
-    {
-        connection.Open();
-
-        // Check if the table already exists
-        string checkTableQuery = $@"
-            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = @TableName)
-            BEGIN
-                SELECT 'Existing table' AS Result;
-            END
-            ELSE
-            BEGIN
-                -- Create the table if it does not exist
-                CREATE TABLE {tableName} (ID INT PRIMARY KEY, UID NVARCHAR(100), ItemName NVARCHAR(100), ItemQuantity INT);
-            END";
-
-        string result = connection.QueryFirstOrDefault<string>(checkTableQuery, new { TableName = tableName });
-        var response = new InventoryModel { Message = "Table already exists" };
-                var responseErr = new InventoryModel { Message = "Table created successfully" };
-        if (result == "Existing table")
+[       Route("NewTable")]
+        public IActionResult CreateTable([FromQuery] string tableName)
         {
-            return Ok(response);
+            string connectionString = _configuration.GetConnectionString("InventoryConnection");
+
+            using (IDbConnection connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+
+                // Check if the table already exists
+                string checkTableQuery = $@"
+                    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = @TableName)
+                    BEGIN
+                        SELECT 'Existing table' AS Result;
+                    END
+                    ELSE
+                    BEGIN
+                        -- Create the table if it does not exist
+                        CREATE TABLE {tableName} (ID INT PRIMARY KEY, UID NVARCHAR(100), ItemName NVARCHAR(100), ItemQuantity INT);
+                    END";
+
+                string result = connection.QueryFirstOrDefault<string>(checkTableQuery, new { TableName = tableName });
+                var response = new InventoryModel { Message = "Table already exists" };
+                        var responseErr = new InventoryModel { Message = "Table created successfully" };
+                if (result == "Existing table")
+                {
+                    return Ok(response);
+                }
+                else
+                {
+                    return Ok(responseErr);
+                }
+            }
         }
-        else
-        {
-            return Ok(responseErr);
-        }
-    }
-}
 
        
         [HttpGet]
@@ -133,6 +143,21 @@ public IActionResult CreateTable([FromQuery] string tableName)
             catch (Exception ex)
             {
                 return StatusCode(500, ex.Message);
+            }
+        }
+
+        [HttpPost]
+        [Route("api/dynamicform")]
+        public async Task<IActionResult> Post([FromBody] InventoryDataModel data)
+        {
+            try
+            {
+                await _inventoryRepo.InsertDynamicData(data);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
             }
         }
     }

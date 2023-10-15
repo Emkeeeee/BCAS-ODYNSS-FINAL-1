@@ -35,13 +35,22 @@ function InsertForm() {
   };
 
   const handleSubmit = async (event) => {
+    let jsontest = JSON.stringify(formData, selectedTable);
+    console.log("jsontest: ", jsontest);
     event.preventDefault();
-    try {
-      await axios.post("/api/insert", formData);
-      // Data inserted successfully, perform any necessary actions
-    } catch (error) {
-      // Handle error
-    }
+    fetch(`http://localhost:5005/api/Inventory/api/dynamicform`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(formData),
+    })
+      .then((response) => {
+        // Handle the response from the API
+      })
+      .catch((error) => {
+        // Handle errors
+      });
   };
 
   const handleInputChange = (event) => {

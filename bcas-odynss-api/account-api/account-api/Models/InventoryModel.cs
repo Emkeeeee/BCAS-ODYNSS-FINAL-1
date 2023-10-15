@@ -3,5 +3,6 @@
     public class InventoryModel
     {
         public string Message { get; set; }
+
     }
 }
