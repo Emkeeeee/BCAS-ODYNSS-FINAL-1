@@ -1,9 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "XwgN0HxyvTmuKGulpJJqyaFaGAysTdRk/r5fYmjUV7p4/GERVgFLQgibrLz5dLFay42CnIHJILQKLvs+asrcQw==",
+  "dgSpecHash": "Mn54wpV8RoigmyjvFLkNYWfFsZO00mVeaMnxkCslKQix3I+6uRHEzuDs8dNsk6+Sff2tfwN+k4Jw31Eci+IhRA==",
   "success": true,
   "projectFilePath": "D:\\COLLEGE STUFF\\CapStone1\\DEVELOPMENT\\BCAS-ODYNSS-FINAL\\bcas-odynss-api\\account-api\\account-api\\account-api.csproj",
   "expectedPackageFiles": [
+    "C:\\Users\\Emkee\\.nuget\\packages\\bcrypt.net-core\\1.6.0\\bcrypt.net-core.1.6.0.nupkg.sha512",
     "C:\\Users\\Emkee\\.nuget\\packages\\dapper\\2.0.138\\dapper.2.0.138.nupkg.sha512",
     "C:\\Users\\Emkee\\.nuget\\packages\\microsoft.aspnetcore.cors\\2.2.0\\microsoft.aspnetcore.cors.2.2.0.nupkg.sha512",
     "C:\\Users\\Emkee\\.nuget\\packages\\microsoft.aspnetcore.http.abstractions\\2.2.0\\microsoft.aspnetcore.http.abstractions.2.2.0.nupkg.sha512",

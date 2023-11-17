@@ -1,19 +1,31 @@
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 import { Dropdown } from "primereact/dropdown";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
+import { Dialog } from "primereact/dialog";
+import { Button } from "primereact/button";
 
 const Admin = () => {
+  const [visibleCT, setVisibleCT] = useState(false);
+  const [visibleCC, setVisibleCC] = useState(false);
   const [selectedTable, setSelectedTable] = useState("");
   const [columns, setColumns] = useState([]);
+  const [newColumnName, setNewColumName] = useState([]);
   const [data, setData] = useState([]);
   const [tableOptions, setTableOptions] = useState([]);
-
+  const [selectedTableColumn, setSelectedTableColumn] = useState("");
+  const [selectedDataType, setSelectedDataType] = useState("");
   const [tableName, setTableName] = useState("");
   const [message, setMessage] = useState("");
   const handleTableNameChange = (e) => {
     setTableName(e.target.value);
   };
+
+  const dataType = [
+    { name: "Text", value: "nvarchar(300)" },
+    { name: "Number", value: "int" },
+  ];
   const handleCreateTable = async () => {
     try {
       const response = await fetch(
@@ -37,6 +49,33 @@ const Admin = () => {
       console.error("Error:", error);
       setMessage("An error occurred while creating the table.");
     }
+  };
+
+  const handleCreateColumn = async (e) => {
+    e.preventDefault();
+
+    // Create a JSON object to send to the API
+    const columnData = {
+      TableName: selectedTableColumn,
+      ColumnName: newColumnName,
+      DataType: selectedDataType,
+    };
+
+    // Make a POST request using Axios
+    axios
+      .post("http://localhost:5005/api/Inventory/api/column", columnData)
+      .then((response) => {
+        // Handle the API response (e.g., show a success message)
+        console.log("API Response:", response.data);
+      })
+      .catch((error) => {
+        // Handle errors (e.g., show an error message)
+        console.error("API Error:", error);
+      });
+
+    console.log(selectedDataType);
+    console.log(newColumnName);
+    console.log(selectedTableColumn);
   };
 
   useEffect(() => {
@@ -77,18 +116,77 @@ const Admin = () => {
   return (
     <div className="card">
       <div>
-        <h2>Create Table</h2>
-        <div>
-          <label htmlFor="tableName">Table Name:</label>
-          <input
-            type="text"
-            id="tableName"
-            value={tableName}
-            onChange={handleTableNameChange}
-          />
-        </div>
-        <button onClick={handleCreateTable}>Create</button>
-        <div>{message}</div>
+        <Button
+          label="Create Table"
+          icon="pi pi-plus"
+          onClick={() => setVisibleCT(true)}
+        />
+
+        {/* Dialog box for creating table */}
+        <Dialog
+          header="Create Table"
+          visible={visibleCT}
+          style={{ width: "50vw" }}
+          onHide={() => setVisibleCT(false)}
+        >
+          <p className="m-0">
+            <div>
+              <label htmlFor="tableName">Table Name:</label>
+              <input
+                type="text"
+                id="tableName"
+                value={tableName}
+                onChange={handleTableNameChange}
+              />
+            </div>
+            <button onClick={handleCreateTable}>Create</button>
+            <div>{message}</div>
+          </p>
+        </Dialog>
+
+        <Button
+          label="Create Column"
+          icon="pi pi-plus"
+          onClick={() => setVisibleCC(true)}
+        />
+        <Dialog
+          header="Create Column"
+          visible={visibleCC}
+          style={{ width: "50vw" }}
+          onHide={() => setVisibleCC(false)}
+        >
+          <p className="m-0">
+            <div>
+              <label htmlFor="tableName">Column Name:</label>
+              <input
+                type="text"
+                id="newColumnName"
+                value={newColumnName}
+                onChange={(e) => setNewColumName(e.target.value)}
+              />
+              <label htmlFor="tableName">Table Name:</label>
+              <Dropdown
+                value={selectedTableColumn}
+                options={tableOptions.map((option) => ({
+                  label: option,
+                  value: option,
+                }))}
+                onChange={(e) => setSelectedTableColumn(e.value)}
+                placeholder="Select a table"
+              />
+
+              <label htmlFor="dataType">Data Type:</label>
+              <Dropdown
+                value={selectedDataType}
+                options={dataType}
+                optionLabel="name"
+                onChange={(e) => setSelectedDataType(e.value)}
+                placeholder="Select a table"
+              />
+            </div>
+            <button onClick={handleCreateColumn}>Create</button>
+          </p>
+        </Dialog>
       </div>
 
       <div className="card">

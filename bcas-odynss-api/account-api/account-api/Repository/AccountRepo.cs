@@ -2,6 +2,7 @@
 using Dapper;
 using System.Data.SqlClient;
 using System.Security.Principal;
+using BCrypt.Net;
 
 namespace account_api.Repository
 {
@@ -19,9 +20,21 @@ namespace account_api.Repository
             using (var connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
-                string query = "INSERT INTO AccountTbl (username, password, user_type, department)" + 
+
+                // Hash the password before inserting
+                string hashedPassword = BCrypt.Net.BCrypt.HashPassword(account.password);
+
+                string query = "INSERT INTO AccountTbl (username, password, user_type, department)" +
                     "VALUES (@username, @password, @user_type, @department)";
-                connection.Execute(query, account);
+
+                // Pass the hashed password to the query
+                connection.Execute(query, new
+                {
+                    username = account.username,
+                    password = hashedPassword,
+                    user_type = account.user_type,
+                    department = account.department
+                });
             }
         }
 

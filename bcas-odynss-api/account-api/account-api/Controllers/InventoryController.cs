@@ -3,10 +3,7 @@ using System.Data.SqlClient;
 using System.Data;
 using Dapper;
 using account_api.Models;
-using System.Data.Common;
-using System.Text.Json;
 using account_api.Repository;
-using Newtonsoft.Json.Linq;
 
 namespace account_api.Controllers
 {
@@ -47,7 +44,7 @@ namespace account_api.Controllers
                     ELSE
                     BEGIN
                         -- Create the table if it does not exist
-                        CREATE TABLE {tableName} (ID INT PRIMARY KEY, UID NVARCHAR(100), ItemName NVARCHAR(100), ItemQuantity INT);
+                        CREATE TABLE {tableName} (ID INT IDENTITY(1,1) PRIMARY KEY, UID NVARCHAR(100), ItemName NVARCHAR(100), ItemQuantity INT);
                     END";
 
                 string result = connection.QueryFirstOrDefault<string>(checkTableQuery, new { TableName = tableName });
@@ -107,17 +104,29 @@ namespace account_api.Controllers
                 var schema = connection.GetSchema("Columns", new[] { null, null, tableName });
 
                 var columns = schema.AsEnumerable()
+                    .Where(row =>
+                        row["COLUMN_NAME"].ToString() != "ID" &&
+                        row["COLUMN_NAME"].ToString() != "UID" &&
+                        row["COLUMN_NAME"].ToString() != "ItemName" &&
+                        row["COLUMN_NAME"].ToString() != "ItemQuantity") // Exclude specified columns
                     .Select(row => new
                     {
                         Name = row["COLUMN_NAME"].ToString(),
-                        DataType = row["DATA_TYPE"].ToString()
                         // You can include additional column properties if needed
                     })
                     .ToList();
 
+                if (columns.Count == 0)
+                {
+                    // If there are no other columns available, return a NotFound status
+                    return Ok();
+                }
+
                 return Ok(columns);
             }
         }
+
+
 
         [HttpGet("{selectedTable}/{selectedColumns}")]
         public async Task<IActionResult> GetData(string selectedTable, string selectedColumns)
@@ -145,20 +154,93 @@ namespace account_api.Controllers
                 return StatusCode(500, ex.Message);
             }
         }
-
         [HttpPost]
         [Route("api/dynamicform")]
-        public async Task<IActionResult> Post([FromBody] InventoryDataModel data)
+        public IActionResult InsertFormData(string tableName, string UID, List<InventoryDataModel> formData)
         {
-            try
+            string connectionString = _configuration.GetConnectionString("InventoryConnection");
+
+            using (var connection = new SqlConnection(connectionString))
             {
-                await _inventoryRepo.InsertDynamicData(data);
-                return Ok();
+                connection.Open();
+
+                // Check if the UID already exists in the table
+                string checkQuery = $"SELECT COUNT(*) FROM {tableName} WHERE UID = @UID";
+                int uidCount = connection.ExecuteScalar<int>(checkQuery, new { UID });
+
+                if (uidCount > 0)
+                {
+                    // UID exists, update the existing data
+                    foreach (var field in formData)
+                    {
+                        string updateQuery = $"UPDATE {tableName} SET [{field.Name}] = @Value WHERE UID = @UID";
+                        connection.Execute(updateQuery, new { Value = field.Value, UID });
+                    }
+                }
+                else
+                {
+                    // UID does not exist, insert new data into a single row
+                    var parameters = new DynamicParameters();
+                    parameters.Add("UID", UID);
+
+                    foreach (var field in formData)
+                    {
+                        parameters.Add(field.Name, field.Value);
+                    }
+
+                    string insertQuery = $"INSERT INTO {tableName} ([UID], {string.Join(", ", formData.Select(f => $"[{f.Name}]"))}) VALUES (@UID, {string.Join(", ", formData.Select(f => $"@{f.Name}"))})";
+                    connection.Execute(insertQuery, parameters);
+                }
             }
-            catch (Exception ex)
+            return Ok("Data inserted or updated successfully.");
+        }
+
+        [HttpPost]
+        [Route("api/column")]
+        public IActionResult CreateColumn([FromBody] ColumnRequestModel columnRequest)
+        {
+            string connectionString = _configuration.GetConnectionString("InventoryConnection");
+            using (var connection = new SqlConnection(connectionString))
             {
-                return BadRequest(ex.Message);
+                try
+                {
+                    string tableName = columnRequest.TableName;
+                    string columnName = columnRequest.ColumnName;
+                    string dataType = columnRequest.DataType;
+
+                    // Check if the column already exists
+                    bool columnExists = CheckIfColumnExists(connection, tableName, columnName);
+
+                    if (columnExists)
+                    {
+                        return BadRequest($"Column '{columnName}' already exists in table '{tableName}'.");
+                    }
+
+                    string sql = $"ALTER TABLE {tableName} ADD {columnName} {dataType}";
+
+                    connection.Execute(sql);
+
+                    return Ok("Column created successfully");
+                }
+                catch (Exception ex)
+                {
+                    return BadRequest($"Error: {ex.Message}");
+                }
             }
+        }
+
+        private bool CheckIfColumnExists(SqlConnection connection, string tableName, string columnName)
+        {
+            // Query the information_schema to check if the column exists in the table
+            string sql = $@"
+        SELECT COUNT(*)
+        FROM information_schema.columns
+        WHERE table_name = @TableName
+        AND column_name = @ColumnName";
+
+            int count = connection.ExecuteScalar<int>(sql, new { TableName = tableName, ColumnName = columnName });
+
+            return count > 0;
         }
     }
 }

@@ -27,26 +27,53 @@ function InsertForm() {
       const response = await axios.get(
         `http://localhost:5005/api/Inventory/api/table-schema?tableName=${selectedTable}`
       );
-      setSchema(response.data);
-      setFormData(response.data);
+      // Clear the existing schema and set it to the new schema
+      setSchema([
+        ...response.data,
+        { name: "ItemName" },
+        { name: "ItemQuantity" },
+        { name: "ItemPlace" },
+      ]);
     } catch (error) {
       // Handle error
     }
   };
 
   const handleSubmit = async (event) => {
-    let jsontest = JSON.stringify(formData, selectedTable);
-    console.log("jsontest: ", jsontest);
     event.preventDefault();
-    fetch(`http://localhost:5005/api/Inventory/api/dynamicform`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(formData),
-    })
+
+    // Concatenate ItemPlace and ItemName to create UID
+    const itemPlace = formData["ItemPlace"] ? formData["ItemPlace"].value : "";
+    const itemName = formData["ItemName"] ? formData["ItemName"].value : "";
+    const uid = itemPlace + "_" + itemName;
+
+    // Create a copy of formData and remove the "ItemPlace" field
+    const updatedFormData = { ...formData };
+    delete updatedFormData["ItemPlace"];
+
+    const apiUrl = "http://localhost:5005/api/Inventory/api/dynamicform";
+
+    const formDataArray = Object.entries(updatedFormData).map(
+      ([name, value]) => ({
+        id: 0,
+        name: name,
+        value: value.value,
+      })
+    );
+
+    axios
+      .post(apiUrl, formDataArray, {
+        // Send only the updatedFormData
+        params: {
+          tableName: selectedTable,
+          UID: uid,
+        },
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
       .then((response) => {
-        // Handle the response from the API
+        // Handle the response
       })
       .catch((error) => {
         // Handle errors
@@ -55,7 +82,16 @@ function InsertForm() {
 
   const handleInputChange = (event) => {
     const { name, value } = event.target;
-    setFormData((prevData) => ({ ...prevData, [name]: value }));
+
+    setFormData((prevFormData) => {
+      const updatedData = { ...prevFormData };
+      updatedData[name] = {
+        id: 0,
+        name: name,
+        value: value,
+      };
+      return updatedData;
+    });
   };
 
   const handleTableChange = (event) => {
@@ -86,7 +122,7 @@ function InsertForm() {
                 id={column.name}
                 label={column.name}
                 name={column.name}
-                value={formData[column.name]}
+                value={formData[column.name] ? formData[column.name].value : ""}
                 onChange={handleInputChange}
               />
             </div>

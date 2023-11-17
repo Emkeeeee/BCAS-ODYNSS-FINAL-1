@@ -140,12 +140,37 @@ const Superadmin = () => {
       </div>
 
       <div className="card">
-        <DataTable value={accounts} tableStyle={{ minWidth: "50rem" }}>
-          <Column field="id" header="ID"></Column>
-          <Column field="username" header="Username"></Column>
-          <Column field="password" header="Password"></Column>
-          <Column field="user_type" header="User Type"></Column>
-          <Column field="department" header="Department"></Column>
+        <DataTable
+          value={accounts}
+          paginator
+          rows={5}
+          removableSort
+          tableStyle={{ minWidth: "50rem" }}
+        >
+          <Column
+            field="id"
+            header="ID"
+            sortable
+            style={{ width: "5%" }}
+          ></Column>
+          <Column
+            field="username"
+            header="Username"
+            sortable
+            style={{ width: "15%" }}
+          ></Column>
+          <Column
+            field="user_type"
+            header="User Type"
+            sortable
+            style={{ width: "25%" }}
+          ></Column>
+          <Column
+            field="department"
+            header="Department"
+            sortable
+            style={{ width: "25%" }}
+          ></Column>
         </DataTable>
       </div>
     </form>

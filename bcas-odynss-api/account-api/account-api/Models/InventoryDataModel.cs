@@ -3,7 +3,7 @@
     public class InventoryDataModel
     {
         public int Id { get; set; }
-        public string TableName { get; set; }
-        public Dictionary<string, object> Fields { get; set; }
+        public string Name { get; set; }
+        public string Value { get; set; }
     }
 }

@@ -38,3 +38,5 @@ D:\COLLEGE STUFF\CapStone1\DEVELOPMENT\BCAS-ODYNSS-FINAL\bcas-odynss-api\account
 D:\COLLEGE STUFF\CapStone1\DEVELOPMENT\BCAS-ODYNSS-FINAL\bcas-odynss-api\account-api\account-api\bin\Debug\net6.0\runtimes\unix\lib\netcoreapp2.1\System.Data.SqlClient.dll
 D:\COLLEGE STUFF\CapStone1\DEVELOPMENT\BCAS-ODYNSS-FINAL\bcas-odynss-api\account-api\account-api\bin\Debug\net6.0\runtimes\win\lib\netcoreapp2.1\System.Data.SqlClient.dll
 D:\COLLEGE STUFF\CapStone1\DEVELOPMENT\BCAS-ODYNSS-FINAL\bcas-odynss-api\account-api\account-api\bin\Debug\net6.0\Newtonsoft.Json.dll
+D:\COLLEGE STUFF\CapStone1\DEVELOPMENT\BCAS-ODYNSS-FINAL\bcas-odynss-api\account-api\account-api\bin\Debug\net6.0\libman.json
+D:\COLLEGE STUFF\CapStone1\DEVELOPMENT\BCAS-ODYNSS-FINAL\bcas-odynss-api\account-api\account-api\bin\Debug\net6.0\BCrypt.Net-Core.dll

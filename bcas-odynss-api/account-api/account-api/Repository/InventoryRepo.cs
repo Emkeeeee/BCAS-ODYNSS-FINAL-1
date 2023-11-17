@@ -1,5 +1,6 @@
 ﻿using account_api.Models;
 using Dapper;
+using Microsoft.SqlServer.Server;
 using System.Data.SqlClient;
 using System.Security.Principal;
 
@@ -14,16 +15,16 @@ namespace account_api.Repository
             _connectionString = connectionString;
         }
 
-        public async Task InsertDynamicData(InventoryDataModel data)
+        public void InsertFormData(List<InventoryDataModel> inventoryDataModels)
         {
             using (var connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
-                var fieldNames = string.Join(", ", data.Fields.Keys);
-                var paramNames = data.Fields.Select((field, index) => $"@{index}").ToArray();
-                var query = $"INSERT INTO {data.TableName} ({fieldNames}) VALUES ({string.Join(", ", paramNames)})";
-
-                await connection.ExecuteAsync(query, data.Fields);
+                foreach (var field in inventoryDataModels)
+                {
+                    string insertQuery = "INSERT INTO YourTable (FieldName, FieldValue) VALUES (@Name, @Value)";
+                    connection.Execute(insertQuery, field);
+                }
             }
         }
     }
