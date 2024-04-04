@@ -1,4 +1,10 @@
 import React, { useState, useEffect } from "react";
+import { Button } from "primereact/button";
+import { InputText } from "primereact/inputtext";
+import { Dropdown } from "primereact/dropdown";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { InputSwitch } from "primereact/inputswitch";
 import axios from "axios";
 
 function InsertForm() {
@@ -6,6 +12,8 @@ function InsertForm() {
   const [selectedTable, setSelectedTable] = useState("");
   const [schema, setSchema] = useState([]);
   const [formData, setFormData] = useState({});
+  const [columns, setColumns] = useState([]);
+  const [data, setData] = useState([]);
 
   useEffect(() => {
     fetchTableList();
@@ -38,6 +46,13 @@ function InsertForm() {
       // Handle error
     }
   };
+
+  useEffect(() => {
+    // Call the fetchTableSchema function when selectedTable changes
+    if (selectedTable) {
+      fetchTableSchema();
+    }
+  }, [selectedTable]); // Dependency array
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -98,26 +113,44 @@ function InsertForm() {
     setSelectedTable(event.target.value);
   };
 
-  return (
-    <div>
-      <select value={selectedTable} onChange={handleTableChange}>
-        <option value="">Select a table</option>
-        {tableList.map((table) => (
-          <option key={table} value={table}>
-            {table}
-          </option>
-        ))}
-      </select>
-      <button onClick={fetchTableSchema} disabled={!selectedTable}>
-        Add Input
-      </button>
+  useEffect(() => {
+    // Fetch column names when the selected table changes
+    if (selectedTable) {
+      fetch(
+        `http://localhost:5005/api/Inventory/GetColumn?tableName=${selectedTable}`
+      )
+        .then((response) => response.json())
+        .then((columnsData) => {
+          const columns = columnsData.map((columnName) => ({
+            field: columnName,
+            header: columnName,
+          }));
+          setColumns(columns);
 
+          // Now that we have column names, fetch data based on those columns
+          fetch(
+            `http://localhost:5005/api/Inventory/${selectedTable}/${columnsData}`
+          )
+            .then((response) => response.json())
+            .then((data) => {
+              setData(data);
+            });
+        });
+    }
+  }, [selectedTable]);
+
+  return (
+    <div className="m-2">
+      {/* Add item inside the inventory */}
       {schema.length > 0 && (
         <form onSubmit={handleSubmit}>
           {schema.map((column) => (
-            <div key={column.name}>
-              <label htmlFor={column.name}>{column.name}</label>
-              <input
+            <div className="card flex justify-content-left" key={column.name}>
+              <label className="p-2" htmlFor={column.name}>
+                {column.name}
+              </label>
+              <InputText
+                className="m-1"
                 type="text"
                 id={column.name}
                 label={column.name}
@@ -127,9 +160,27 @@ function InsertForm() {
               />
             </div>
           ))}
-          <button type="submit">Insert</button>
+          <Button label="Submit" icon="pi pi-check" type="submit" />
         </form>
       )}
+
+      <span>Select A Table: </span>
+
+      <Dropdown
+        value={selectedTable}
+        options={tableList.map((table) => ({ label: table, value: table }))}
+        onChange={handleTableChange}
+        placeholder="Select a table"
+      />
+
+      <Button label="Add New Item" icon="pi pi-plus" />
+
+      {/* Borrow and view of data */}
+      <DataTable value={data} tableStyle={{ minWidth: "50rem" }}>
+        {columns.map((col) => (
+          <Column key={col.field} field={col.field} header={col.header} />
+        ))}
+      </DataTable>
     </div>
   );
 }

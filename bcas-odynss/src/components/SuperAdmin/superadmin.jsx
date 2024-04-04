@@ -1,38 +1,53 @@
 import React, { useState, useEffect, useRef } from "react";
-import { InputText } from "primereact/inputtext";
-import { Dropdown } from "primereact/dropdown";
-import { Password } from "primereact/password";
-import { Button } from "primereact/button";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
+import { Button } from "primereact/button";
+import { Dialog } from "primereact/dialog";
+import { BreadCrumb } from "primereact/breadcrumb";
+import { TabView, TabPanel } from "primereact/tabview";
 import { Toast } from "primereact/toast";
 import axios from "axios";
 
 const Superadmin = () => {
+  const [accountId, setAccountId] = useState([]);
+  const [accounts, setAccounts] = useState([]);
+  const [deactAccounts, setDeactAccounts] = useState([]);
+  const [activeAccountsCount, setActiveAccountsCount] = useState(0);
+  const [deactiveAccountsCount, setDeactiveAccountsCount] = useState(0);
   const toast = useRef(null);
 
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPass, setConfirmPass] = useState("");
-  const [userType, setUserType] = useState(null); // Change initial state to null
-  const [department, setDepartment] = useState(null); // Change initial state to null
-  const user_type = [
-    { label: "User", value: "User" },
-    { label: "Admin", value: "Admin" },
-    { label: "SuperAdmin", value: "SuperAdmin" },
-  ];
-  const departmentType = [
-    { label: "Elementary", value: "Elementary" },
-    { label: "Junior Highschool", value: "JuniorHighschool" },
-    { label: "Senior Highschool", value: "SeniorHighschool" },
-    { label: "College", value: "College" },
-  ];
-
-  const [accounts, setAccounts] = useState([]);
+  const [visibleDelete, setvisibleDelete] = useState(false);
+  const [visibleRestore, setVisibleRestore] = useState(false);
+  const [visibleEdit, setVisibleEdit] = useState(false);
 
   useEffect(() => {
     fetchAccounts();
+    fetchDeactAccounts();
+    fetchCountActive();
+    fetchCountDeactive();
   }, []);
+
+  const fetchCountActive = () => {
+    axios
+      .get("http://localhost:5005/api/Accounts/GetCountActiveAccounts")
+      .then((response) => {
+        setActiveAccountsCount(response.data);
+      })
+      .catch((error) => {
+        console.error("Error fetching active accounts count:", error);
+      });
+  };
+
+  const fetchCountDeactive = () => {
+    axios
+      .get("http://localhost:5005/api/Accounts/GetCountDeactiveAccounts")
+      .then((response) => {
+        setDeactiveAccountsCount(response.data);
+      })
+      .catch((error) => {
+        console.error("Error fetching active accounts count:", error);
+      });
+  };
 
   const fetchAccounts = () => {
     axios
@@ -45,135 +60,329 @@ const Superadmin = () => {
       });
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    // Create an object with the account data
-    const accountData = {
-      username: username,
-      password: password,
-      user_type: userType,
-      department: department,
-    };
-
-    // Send a POST request to the API endpoint
+  const fetchDeactAccounts = () => {
     axios
-      .post("http://localhost:5005/api/Accounts/Insert", accountData)
+      .get("http://localhost:5005/api/Accounts/SelectDeact")
       .then((response) => {
-        console.log(response.data);
-
-        if (response.status === 200) {
-          fetchAccounts();
-
-          toast.current.show({
-            severity: "success",
-            summary: "Success",
-            detail: "Succesfully Registered",
-            life: 5000,
-          });
-        }
-
-        // Handle the success response as needed
+        setDeactAccounts(response.data);
       })
       .catch((error) => {
         console.error(error);
-        // Handle the error response as needed
-        toast.current.show({
-          severity: "warn",
-          summary: "Error",
-          detail: "Not Registered",
-          life: 5000,
-        });
       });
   };
 
+  const actionBodyTemplate = (rowData) => {
+    return (
+      <React.Fragment>
+        <Button icon="pi pi-pencil" rounded outlined className="mr-2" />
+        <Button
+          icon="pi pi-trash"
+          rounded
+          outlined
+          severity="danger"
+          onClick={() => handleDelete(rowData.user_id)}
+          visible={rowData.isAdmin === false}
+        />
+      </React.Fragment>
+    );
+  };
+
+  const actionBodyTemplateDisable = (rowData) => {
+    return (
+      <React.Fragment>
+        <Button
+          icon="pi pi-refresh"
+          rounded
+          outlined
+          className="mr-2"
+          onClick={() => handleRestore(rowData.user_id)}
+        />
+      </React.Fragment>
+    );
+  };
+
+  const handleDelete = (accountid) => {
+    setAccountId(accountid);
+    setvisibleDelete(true);
+  };
+
+  const handleRestore = (accountid) => {
+    setAccountId(accountid);
+    setVisibleRestore(true);
+  };
+
+  const handleDeleteYes = () => {
+    axios
+      .put(
+        `http://localhost:5005/api/Accounts/DeactivateAccount?userId=${accountId}`
+      )
+      .then((response) => {
+        console.log(response.data);
+        setvisibleDelete(false);
+        fetchAccounts();
+        fetchDeactAccounts();
+        fetchCountActive();
+        fetchCountDeactive();
+      })
+      .catch((error) => {
+        console.log(`Error: ${error.response.data}`);
+        showFail();
+      });
+  };
+
+  const handleRestoreYes = () => {
+    axios
+      .put(
+        `http://localhost:5005/api/Accounts/ActivateAccount?userId=${accountId}`
+      )
+      .then((response) => {
+        console.log(response.data);
+        setVisibleRestore(false);
+        fetchAccounts();
+        fetchDeactAccounts();
+        fetchCountActive();
+        fetchCountDeactive();
+      })
+      .catch((error) => {
+        console.log(`Error: ${error.response.data}`);
+      });
+  };
+
+  const breadcrumb = [{ label: "User List" }];
+  const home = { icon: "pi pi-home" };
+
+  const showSuccess = (message) => {
+    toast.current.show({
+      severity: "success",
+      summary: "Success",
+      detail: message,
+      life: 3000,
+    });
+  };
+
+  const showFail = (message) => {
+    toast.current.show({
+      severity: "error",
+      summary: "Failure",
+      detail: message,
+      life: 3000,
+    });
+  };
+
   return (
-    <form onSubmit={handleSubmit}>
+    <div>
       <Toast ref={toast} />
-      <div className="flex justify-content-center flex-wrap mt-8 mb-8 ">
-        <div className="flex flex-column row-gap-4 justify-content-center ">
-          <h1 className="text-center">Register</h1>
-          <span className="p-float-label">
-            <InputText
-              id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-            />
-            <label htmlFor="username">Username</label>
-          </span>
+      <BreadCrumb model={breadcrumb} home={home} />
 
-          <span className="p-float-label">
-            <Password
-              inputId="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <label htmlFor="password">Password</label>
-          </span>
+      <Dialog
+        header="Confirm Delete"
+        visible={visibleDelete}
+        style={{ width: "50vw" }}
+        onHide={() => setvisibleDelete(false)}
+        className="text-center w-3"
+      >
+        <p>Are you sure you want to delete {accountId} ?</p>
 
-          <span className="p-float-label">
-            <Password
-              inputId="confirmpass"
-              value={confirmPass}
-              onChange={(e) => setConfirmPass(e.target.value)}
-              feedback={false}
-            />
-            <label htmlFor="password">Confirm Password</label>
-          </span>
+        <Button
+          label="Yes"
+          className="mr-5 w-3"
+          severity="danger"
+          onClick={handleDeleteYes}
+        />
+        <Button
+          label="No"
+          className="w-3"
+          onClick={() => setvisibleDelete(false)}
+        />
+      </Dialog>
 
-          <Dropdown
-            value={userType}
-            onChange={(e) => setUserType(e.value)}
-            options={user_type}
-            placeholder="Select a User Type"
-          />
+      <Dialog
+        header="Confirm Restore"
+        visible={visibleRestore}
+        style={{ width: "50vw" }}
+        onHide={() => setVisibleRestore(false)}
+        className="text-center w-3"
+      >
+        <p>Are you sure you want to restore {accountId} ?</p>
 
-          <Dropdown
-            value={department}
-            onChange={(e) => setDepartment(e.value)}
-            options={departmentType}
-            placeholder="Select a Department"
-          />
+        <Button
+          label="Yes"
+          className="mr-5 w-3"
+          severity="danger"
+          onClick={handleRestoreYes}
+        />
+        <Button
+          label="No"
+          className="w-3"
+          onClick={() => setVisibleRestore(false)}
+        />
+      </Dialog>
 
-          <Button type="submit" label="Register" icon="pi pi-check" />
+      <div className="grid">
+        <div className="col-12 md:col-6 lg:col-3">
+          <div className="surface-0 shadow-2 p-3 border-1 border-50 border-round">
+            <div className="flex justify-content-between mb-3">
+              <div>
+                <span className="block text-500 font-medium mb-3">
+                  Total Users
+                </span>
+                <div className="text-900 font-medium text-xl">
+                  {activeAccountsCount}
+                </div>
+              </div>
+              <div
+                className="flex align-items-center justify-content-center bg-blue-100 border-round"
+                style={{ width: "2.5rem", height: "2.5rem" }}
+              >
+                <i className="pi pi-user text-blue-500 text-xl"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-12 md:col-6 lg:col-3">
+          <div className="surface-0 shadow-2 p-3 border-1 border-50 border-round">
+            <div className="flex justify-content-between mb-3">
+              <div>
+                <span className="block text-500 font-medium mb-3">
+                  Disabled Users
+                </span>
+                <div className="text-900 font-medium text-xl">
+                  {deactiveAccountsCount}
+                </div>
+              </div>
+              <div
+                className="flex align-items-center justify-content-center bg-red-100 border-round"
+                style={{ width: "2.5rem", height: "2.5rem" }}
+              >
+                <i className="pi pi-user-minus text-red-500 text-xl"></i>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="card">
-        <DataTable
-          value={accounts}
-          paginator
-          rows={5}
-          removableSort
-          tableStyle={{ minWidth: "50rem" }}
-        >
-          <Column
-            field="id"
-            header="ID"
-            sortable
-            style={{ width: "5%" }}
-          ></Column>
-          <Column
-            field="username"
-            header="Username"
-            sortable
-            style={{ width: "15%" }}
-          ></Column>
-          <Column
-            field="user_type"
-            header="User Type"
-            sortable
-            style={{ width: "25%" }}
-          ></Column>
-          <Column
-            field="department"
-            header="Department"
-            sortable
-            style={{ width: "25%" }}
-          ></Column>
-        </DataTable>
+      <div className="surface-0 shadow-2 p-3 border-1 border-50 border-round">
+        <TabView>
+          <TabPanel header="Active Users">
+            <DataTable value={accounts} paginator rows={5} removableSort>
+              <Column
+                field="user_id"
+                header="ID"
+                sortable
+                style={{ width: "5%" }}
+              ></Column>
+              <Column
+                field="isAdmin"
+                header="Admin"
+                sortable
+                style={{ width: "5%" }}
+              ></Column>
+              <Column
+                field="username"
+                header="Username"
+                sortable
+                style={{ width: "15%" }}
+              ></Column>
+              <Column
+                field="firstName"
+                header="First Name"
+                sortable
+                style={{ width: "25%" }}
+              ></Column>
+              <Column
+                field="lastName"
+                header="Last Name"
+                sortable
+                style={{ width: "25%" }}
+              ></Column>
+              <Column
+                field="email"
+                header="Email"
+                sortable
+                style={{ width: "25%" }}
+              ></Column>
+              <Column
+                field="department"
+                header="Department"
+                sortable
+                style={{ width: "25%" }}
+              ></Column>
+              <Column
+                field="createdAt"
+                header="Created At"
+                sortable
+                style={{ width: "25%" }}
+              ></Column>
+
+              <Column
+                body={actionBodyTemplate}
+                exportable={false}
+                style={{ minWidth: "8rem" }}
+              ></Column>
+            </DataTable>
+          </TabPanel>
+          <TabPanel header="Disabled Users">
+            <DataTable value={deactAccounts} paginator rows={5} removableSort>
+              <Column
+                field="user_id"
+                header="ID"
+                sortable
+                style={{ width: "5%" }}
+              ></Column>
+              <Column
+                field="isAdmin"
+                header="Admin"
+                sortable
+                style={{ width: "5%" }}
+              ></Column>
+              <Column
+                field="username"
+                header="Username"
+                sortable
+                style={{ width: "15%" }}
+              ></Column>
+              <Column
+                field="firstName"
+                header="First Name"
+                sortable
+                style={{ width: "25%" }}
+              ></Column>
+              <Column
+                field="lastName"
+                header="Last Name"
+                sortable
+                style={{ width: "25%" }}
+              ></Column>
+              <Column
+                field="email"
+                header="Email"
+                sortable
+                style={{ width: "25%" }}
+              ></Column>
+              <Column
+                field="department"
+                header="Department"
+                sortable
+                style={{ width: "25%" }}
+              ></Column>
+              <Column
+                field="createdAt"
+                header="Created At"
+                sortable
+                style={{ width: "25%" }}
+              ></Column>
+
+              <Column
+                body={actionBodyTemplateDisable}
+                exportable={false}
+                style={{ minWidth: "8rem" }}
+              ></Column>
+            </DataTable>
+          </TabPanel>
+        </TabView>
       </div>
-    </form>
+    </div>
   );
 };
 

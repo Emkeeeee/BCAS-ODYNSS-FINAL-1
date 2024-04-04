@@ -7,10 +7,14 @@ namespace account_api.Models
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public int id { get; set; }
+        public int user_id { get; set; }
         public string username { get; set; }
         public string password { get; set; }
-        public string user_type { get; set; }
-        public string department { get; set; }
+        public string firstName { get; set; }
+        public string lastName { get; set; }
+        public int department { get; set; }
+        public string email { get; set; }
+        public bool isAdmin { get; set; }
+
     }
 }

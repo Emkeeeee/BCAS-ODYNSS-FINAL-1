@@ -1,18 +1,20 @@
-import React, { useState } from "react";
+import React from "react";
 import { Routes, Route } from "react-router-dom";
 import "./App.css";
-import Admin from "./components/Admin/admin";
-import Login from "./components/Login/login";
-import Superadmin from "./components/SuperAdmin/superadmin";
-import InsertForm from "./components/User/user";
+import Login from "./pages/Login/login";
+import UserDashboard from "./components/User/dashboard";
+import SuperadminDashboard from "./components/SuperAdmin/dashboard";
+import AdminDashboard from "./components/Admin/dashboard";
+import Register from "./components/SuperAdmin/register";
 
 function App() {
   return (
     <Routes>
       <Route path="/" element={<Login />} />
-      <Route path="/user" element={<InsertForm />} />
-      <Route path="/admin" element={<Admin />} />
-      <Route path="/superadmin" element={<Superadmin />} />
+      <Route path="/user" element={<UserDashboard />} />
+      <Route path="/admin" element={<AdminDashboard />} />
+      <Route path="/superadmin" element={<SuperadminDashboard />} />
+      <Route path="/register" element={<Register />} />
     </Routes>
   );
 }

@@ -4,11 +4,15 @@ using System.Data;
 using Dapper;
 using account_api.Models;
 using account_api.Repository;
+using System.Drawing;
+using System.Drawing.Imaging;
+using ZXing;
+using ZXing.Common;
+using ZXing.QrCode;
+
 
 namespace account_api.Controllers
 {
-    
-
     [Route("api/[controller]")]
     [ApiController]
 
@@ -18,229 +22,514 @@ namespace account_api.Controllers
 
         private readonly InventoryRepo _inventoryRepo;
 
+        private readonly string _connectionString;
+
         public InventoryController(IConfiguration configuration)
         {
             _configuration = configuration;
-            string connectionString = configuration.GetConnectionString("InventoryConnection");
-            _inventoryRepo = new InventoryRepo(connectionString);
+            _connectionString = configuration.GetConnectionString("InventoryConnection");
+            _inventoryRepo = new InventoryRepo(_connectionString);
         }
 
-        [HttpPost]
-[       Route("NewTable")]
-        public IActionResult CreateTable([FromQuery] string tableName)
+        [HttpGet("GetActiveItems")]
+        public async Task<ActionResult<IEnumerable<ItemSummary>>> GetActiveItems(int dept_id,
+        int? cat_id = null,
+        int? subCat_id = null,
+        int? unqFeat_id = null,
+        int? loc_id = null,
+        string? item_uid = null)
         {
-            string connectionString = _configuration.GetConnectionString("InventoryConnection");
-
-            using (IDbConnection connection = new SqlConnection(connectionString))
+            using (var connection = new SqlConnection(_connectionString))
             {
-                connection.Open();
+                await connection.OpenAsync();
 
-                // Check if the table already exists
-                string checkTableQuery = $@"
-                    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = @TableName)
-                    BEGIN
-                        SELECT 'Existing table' AS Result;
-                    END
-                    ELSE
-                    BEGIN
-                        -- Create the table if it does not exist
-                        CREATE TABLE {tableName} (ID INT IDENTITY(1,1) PRIMARY KEY, UID NVARCHAR(100), ItemName NVARCHAR(100), ItemQuantity INT);
-                    END";
-
-                string result = connection.QueryFirstOrDefault<string>(checkTableQuery, new { TableName = tableName });
-                var response = new InventoryModel { Message = "Table already exists" };
-                        var responseErr = new InventoryModel { Message = "Table created successfully" };
-                if (result == "Existing table")
+                string sql = @"
+                    SELECT 
+                        item_name,
+                        item_desc,
+                        COUNT(*) AS qty,
+                        SUM(CASE WHEN isOut = 0 THEN 1 ELSE 0 END) AS stock
+                    FROM 
+                        Items i
+                    WHERE 
+                        isActive = 1 AND isBroken = 0 AND dept_id = @dept_id";
+                if (cat_id.HasValue)
                 {
-                    return Ok(response);
-                }
-                else
-                {
-                    return Ok(responseErr);
-                }
-            }
-        }
-
-       
-        [HttpGet]
-        [Route("GetColumn")]
-        public IActionResult GetColumns(string tableName)
-        {
-            string connectionString = _configuration.GetConnectionString("InventoryConnection");
-
-            using (IDbConnection connection = new SqlConnection(connectionString))
-            {
-                string query = $"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '{tableName}'";
-                IEnumerable<string> columns = connection.Query<string>(query);
-                return Ok(columns);
-            }
-        }
-
-        [HttpGet]
-        [Route("api/table-list")]
-        public IActionResult GetTableList()
-        {
-            string connectionString = _configuration.GetConnectionString("InventoryConnection");
-            using (var connection = new SqlConnection(connectionString))
-            {
-                connection.Open();
-                var tables = connection.GetSchema("Tables")
-                    .AsEnumerable()
-                    .Select(row => row["TABLE_NAME"].ToString())
-                    .ToList();
-
-                return Ok(tables);
-            }
-        }
-
-        [HttpGet]
-        [Route("api/table-schema")]
-        public IActionResult GetTableSchema(string tableName)
-        {
-            string connectionString = _configuration.GetConnectionString("InventoryConnection");
-            using (var connection = new SqlConnection(connectionString))
-            {
-                connection.Open();
-                var schema = connection.GetSchema("Columns", new[] { null, null, tableName });
-
-                var columns = schema.AsEnumerable()
-                    .Where(row =>
-                        row["COLUMN_NAME"].ToString() != "ID" &&
-                        row["COLUMN_NAME"].ToString() != "UID" &&
-                        row["COLUMN_NAME"].ToString() != "ItemName" &&
-                        row["COLUMN_NAME"].ToString() != "ItemQuantity") // Exclude specified columns
-                    .Select(row => new
-                    {
-                        Name = row["COLUMN_NAME"].ToString(),
-                        // You can include additional column properties if needed
-                    })
-                    .ToList();
-
-                if (columns.Count == 0)
-                {
-                    // If there are no other columns available, return a NotFound status
-                    return Ok();
+                    sql += " AND i.cat_id = @cat_id";
                 }
 
-                return Ok(columns);
+                if (subCat_id.HasValue)
+                {
+                    sql += " AND i.subCat_id = @subCat_id";
+                }
+
+                if (unqFeat_id.HasValue)
+                {
+                    sql += " AND i.unqFeat_id = @unqFeat_id";
+                }
+
+                if (loc_id.HasValue)
+                {
+                    sql += " AND i.loc_id = @loc_id";
+                }
+                if (!string.IsNullOrWhiteSpace(item_uid))
+                {
+                    sql += " AND i.item_uid = @item_uid";
+                }
+
+                sql += @"
+                    GROUP BY 
+                        item_name, 
+                        item_desc;";
+
+                var parameters = new DynamicParameters();
+                parameters.Add("@dept_id", dept_id);
+
+                if (cat_id.HasValue) parameters.Add("@cat_id", cat_id);
+                if (subCat_id.HasValue) parameters.Add("@subCat_id", subCat_id);
+                if (unqFeat_id.HasValue) parameters.Add("@unqFeat_id", unqFeat_id);
+                if (loc_id.HasValue) parameters.Add("@loc_id", loc_id);
+                if (!string.IsNullOrWhiteSpace(item_uid))
+                {
+                    parameters.Add("@item_uid", item_uid);
+                }
+
+                var items = await connection.QueryAsync<ItemSummary>(sql, parameters);
+
+                return Ok(items);
+            }
+        }
+
+        [HttpGet("GetActiveItemsExpandable")]
+        public async Task<ActionResult<IEnumerable<ItemSummary>>> GetActiveItemsExpandable(
+        int dept_id,
+        int? cat_id = null,
+        int? subCat_id = null,
+        int? unqFeat_id = null,
+        int? loc_id = null,
+        string? item_uid = null)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+
+                string sql = @"
+            SELECT 
+                i.item_name,
+                i.item_desc,
+                COUNT(*) AS qty,
+                SUM(CASE WHEN i.isOut = 0 THEN 1 ELSE 0 END) AS stock,
+                i.item_uid,
+                i.remarks,
+                i.invTime,
+                u.firstName AS invBy,
+                i.isOut,
+                i.borrowBy,
+                l.location
+            FROM 
+                Items i
+            LEFT JOIN 
+                Users u ON i.invBy = u.user_id 
+            LEFT JOIN 
+                Location l ON i.loc_id = l.loc_id 
+            WHERE 
+                i.isActive = 1 
+                AND i.isBroken = 0 
+                AND i.dept_id = @dept_id";
+
+                if (cat_id.HasValue)
+                {
+                    sql += " AND i.cat_id = @cat_id";
+                }
+
+                if (subCat_id.HasValue)
+                {
+                    sql += " AND i.subCat_id = @subCat_id";
+                }
+
+                if (unqFeat_id.HasValue)
+                {
+                    sql += " AND i.unqFeat_id = @unqFeat_id";
+                }
+
+                if (loc_id.HasValue)
+                {
+                    sql += " AND i.loc_id = @loc_id";
+                }
+
+                if (!string.IsNullOrWhiteSpace(item_uid))
+                {
+                    sql += " AND i.item_uid = @item_uid";
+                }
+
+                sql += @"
+            GROUP BY 
+                i.item_name, 
+                i.item_desc,
+                i.remarks,
+                i.item_uid,
+                i.invTime,
+                u.firstName,
+                i.isOut,
+                i.borrowBy,
+                l.location;
+        ";
+
+                var parameters = new DynamicParameters();
+                parameters.Add("@dept_id", dept_id);
+
+                if (cat_id.HasValue) parameters.Add("@cat_id", cat_id);
+                if (subCat_id.HasValue) parameters.Add("@subCat_id", subCat_id);
+                if (unqFeat_id.HasValue) parameters.Add("@unqFeat_id", unqFeat_id);
+                if (loc_id.HasValue) parameters.Add("@loc_id", loc_id);
+                if (!string.IsNullOrWhiteSpace(item_uid))
+                {
+                    parameters.Add("@item_uid", item_uid);
+                }
+
+                var items = await connection.QueryAsync<ItemSummary>(sql, parameters);
+
+                return Ok(items);
+            }
+        }
+
+        [HttpGet("GetItemViaUid")]
+        public async Task<ActionResult<IEnumerable<ItemSummary>>> GetItemViaUid(int dept_id, string item_uid)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+
+                string sql = @"
+            SELECT 
+				i.item_uid,
+                i.item_name,
+                i.item_desc,
+                i.remarks,
+				i.dept_id,
+				i.cat_id,
+				i.subCat_id,
+				i.unqFeat_id,
+				i.unqFeat,
+                i.invTime,
+                i.invBy,
+                i.loc_id
+            FROM 
+                Items i
+            WHERE 
+                i.isActive = 1 
+                AND i.isBroken = 0 
+                AND i.dept_id = @dept_id
+				AND item_uid = @item_uid
+
+            GROUP BY 
+                i.item_uid,
+                i.item_name,
+                i.item_desc,
+                i.remarks,
+				i.dept_id,
+				i.cat_id,
+				i.subCat_id,
+				i.unqFeat_id,
+				i.unqFeat,
+                i.invTime,
+                i.invBy,
+                i.loc_id";
+
+                var parameters = new DynamicParameters();
+                parameters.Add("@dept_id", dept_id);
+                parameters.Add("@item_uid", item_uid);
+
+                var items = await connection.QueryAsync<InventoryDataModel>(sql, parameters);
+
+                return Ok(items);
             }
         }
 
 
+        [HttpGet("GetDepartments")]
+        public async Task<ActionResult<IEnumerable<Department>>> GetDepartments()
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
 
-        [HttpGet("{selectedTable}/{selectedColumns}")]
-        public async Task<IActionResult> GetData(string selectedTable, string selectedColumns)
+                string sql = @"
+                    SELECT 
+                        dept_id,
+                        department,
+                        acronym,
+                        isActive
+                    FROM 
+                        Department
+                    WHERE
+                        isActive = 1;";
+
+                var departments = await connection.QueryAsync<Department>(sql);
+
+                return Ok(departments);
+            }
+        }
+
+        [HttpGet("GetSubCategory")]
+        public async Task<ActionResult<IEnumerable<Department>>> GetSubCategory(int cat_id)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+
+                string sql = @"
+                    SELECT
+                    sc.subCat_id,
+                    sc.cat_id,
+                    sc.subCategory,
+                    sc.acronym,
+                    sc.isActive
+                FROM 
+                    SubCategory sc
+                LEFT JOIN 
+                    Category c ON sc.cat_id = c.cat_id
+                WHERE
+                    sc.isActive = 1
+                    AND sc.cat_id = @cat_id;";
+
+                var subCategory = await connection.QueryAsync<SubCategory>(sql, new { cat_id });
+
+                return Ok(subCategory);
+            }
+        }
+
+        [HttpGet("GetCategory")]
+        public async Task<ActionResult<IEnumerable<Department>>> GetCategory()
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+
+                string sql = @"
+                    SELECT 
+                        cat_id,
+                        category,
+                        acronym,
+                        isActive
+                    FROM 
+                        Category
+                    WHERE
+                        isActive = 1;";
+
+                var category = await connection.QueryAsync<Category>(sql);
+
+                return Ok(category);
+            }
+        }
+
+        [HttpGet("GetLocation")]
+        public async Task<ActionResult<IEnumerable<Department>>> GetLocation()
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+
+                string sql = @"
+                    SELECT 
+                        loc_id,
+                        location,
+                        isActive
+                    FROM 
+                        Location
+                    WHERE
+                        isActive = 1;";
+
+                var location = await connection.QueryAsync<Location>(sql);
+
+                return Ok(location);
+            }
+        }
+
+        [HttpGet("GetUniqueFeature")]
+        public async Task<ActionResult<IEnumerable<Department>>> GetUniqueFeature()
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+
+                string sql = @"
+                    SELECT 
+                        unqFeat_id,
+                        unqFeature,
+                        isActive
+                    FROM 
+                        UniqueFeature
+                       WHERE
+                        isActive = 1;";
+
+                var uf = await connection.QueryAsync<UniqueFeature>(sql);
+
+                return Ok(uf);
+            }
+        }
+
+        [HttpGet("GetUniqueFeatureValue")]
+        public async Task<ActionResult<IEnumerable<UniqueFeatureValue>>> GetUniqueFeatureValue(int unqFeat_id)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+
+                string sql = @"
+                    SELECT 
+                        ufv.unqFeatVal_id,
+                        ufv.unqFeat_id,
+                        ufv.unqFeatVal,
+                        ufv.isActive
+                    FROM 
+                        UniqueFeatureValues ufv
+                    LEFT JOIN 
+                        UniqueFeature uf ON ufv.unqFeat_id = uf.unqFeat_id
+                    WHERE
+                        ufv.unqFeat_id = @unqFeat_id
+                        AND ufv.isActive = 1;";
+
+                var ufv = await connection.QueryAsync<UniqueFeatureValue>(sql, new { unqFeat_id });
+
+                return Ok(ufv);
+            }
+        }
+
+        [HttpPost("AddItem")]
+        public async Task<IActionResult> AddItem(InventoryModel item)
         {
             try
             {
+                // Call the repository method to add the item
+                int newItemId = await _inventoryRepo.AddItemAsync(item);
 
-                string connectionString = _configuration.GetConnectionString("InventoryConnection");
-
-                using (IDbConnection connection = new SqlConnection(connectionString))
-                {
-                    connection.Open();
-                    // Construct a parameterized SQL query to select specific columns from the selected table
-                    var query = $"SELECT {selectedColumns} FROM {selectedTable}";
-
-                    var data = await connection.QueryAsync(query);
-
-                    return Ok(data);
-                }
-
-                
+                // Optionally, return the newly created item ID
+                return Ok(newItemId);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ex.Message);
+                // Handle any exceptions and return an appropriate response
+                return StatusCode(500, $"An error occurred: {ex.Message}");
             }
         }
-        [HttpPost]
-        [Route("api/dynamicform")]
-        public IActionResult InsertFormData(string tableName, string UID, List<InventoryDataModel> formData)
+
+        [HttpPut("DeactivateItem")]
+        public IActionResult DeactivateItem(string itemUID)
         {
-            string connectionString = _configuration.GetConnectionString("InventoryConnection");
-
-            using (var connection = new SqlConnection(connectionString))
+            try
             {
-                connection.Open();
+                _inventoryRepo.DeactivateItem(itemUID);
+                return Ok($"Item with UID '{itemUID}' deactivated successfully.");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
 
-                // Check if the UID already exists in the table
-                string checkQuery = $"SELECT COUNT(*) FROM {tableName} WHERE UID = @UID";
-                int uidCount = connection.ExecuteScalar<int>(checkQuery, new { UID });
+        [HttpPut("ActivateItem")]
+        public IActionResult ActivateItem(string itemUID)
+        {
+            try
+            {
+                _inventoryRepo.DeactivateItem(itemUID);
+                return Ok($"Item with UID '{itemUID}' activated successfully.");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
 
-                if (uidCount > 0)
+        [HttpPut("BorrowItem")]
+        public IActionResult BorrowItem(string itemUID, string borrower, int locId)
+        {
+            try
+            {
+                _inventoryRepo.BorrowItem(itemUID, borrower, locId);
+                return Ok($"Item with UID '{itemUID}' borrowed successfully.");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpPut("ReturnItem")]
+        public IActionResult ReturnItem(string itemUID)
+        {
+            try
+            {
+                _inventoryRepo.ReturnItem(itemUID);
+                return Ok($"Item with UID '{itemUID}' returned successfully.");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpPut("UpdateItemViaUid")]
+        public async Task<ActionResult> UpdateItemViaUid([FromBody] InventoryDataModel updatedItem)
+        {
+            if (updatedItem == null)
+            {
+                return BadRequest("Invalid data provided");
+            }
+
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+
+                string sql = @"
+            UPDATE Items
+            SET 
+                item_uid = @item_uid,
+                item_name = @item_name,
+                item_desc = @item_desc,
+                remarks = @remarks,
+                dept_id = @dept_id,
+                cat_id = @cat_id,
+                subCat_id = @subCat_id,
+                unqFeat_id = @unqFeat_id,
+                unqFeat = @unqFeat,
+                invTime = @invTime,
+                invBy = @invBy,
+                loc_id = @loc_id
+            WHERE 
+                item_uid = @old_item_uid"; // Use the old item UID to locate the record
+
+                var parameters = new
                 {
-                    // UID exists, update the existing data
-                    foreach (var field in formData)
-                    {
-                        string updateQuery = $"UPDATE {tableName} SET [{field.Name}] = @Value WHERE UID = @UID";
-                        connection.Execute(updateQuery, new { Value = field.Value, UID });
-                    }
+                    item_uid = updatedItem.item_uid, // Updated UID
+                    old_item_uid = updatedItem.old_item_uid, // Old UID to locate the record
+                                                             // Other fields
+                    item_name = updatedItem.item_name,
+                    item_desc = updatedItem.item_desc,
+                    remarks = updatedItem.remarks,
+                    dept_id = updatedItem.dept_id,
+                    cat_id = updatedItem.cat_id,
+                    subCat_id = updatedItem.subCat_id,
+                    unqFeat_id = updatedItem.unqFeat_id,
+                    unqFeat = updatedItem.unqFeat,
+                    invTime = updatedItem.invTime,
+                    invBy = updatedItem.invBy,
+                    loc_id = updatedItem.loc_id
+                };
+
+                var affectedRows = await connection.ExecuteAsync(sql, parameters);
+
+                if (affectedRows > 0)
+                {
+                    return Ok("Item updated successfully");
                 }
                 else
                 {
-                    // UID does not exist, insert new data into a single row
-                    var parameters = new DynamicParameters();
-                    parameters.Add("UID", UID);
-
-                    foreach (var field in formData)
-                    {
-                        parameters.Add(field.Name, field.Value);
-                    }
-
-                    string insertQuery = $"INSERT INTO {tableName} ([UID], {string.Join(", ", formData.Select(f => $"[{f.Name}]"))}) VALUES (@UID, {string.Join(", ", formData.Select(f => $"@{f.Name}"))})";
-                    connection.Execute(insertQuery, parameters);
-                }
-            }
-            return Ok("Data inserted or updated successfully.");
-        }
-
-        [HttpPost]
-        [Route("api/column")]
-        public IActionResult CreateColumn([FromBody] ColumnRequestModel columnRequest)
-        {
-            string connectionString = _configuration.GetConnectionString("InventoryConnection");
-            using (var connection = new SqlConnection(connectionString))
-            {
-                try
-                {
-                    string tableName = columnRequest.TableName;
-                    string columnName = columnRequest.ColumnName;
-                    string dataType = columnRequest.DataType;
-
-                    // Check if the column already exists
-                    bool columnExists = CheckIfColumnExists(connection, tableName, columnName);
-
-                    if (columnExists)
-                    {
-                        return BadRequest($"Column '{columnName}' already exists in table '{tableName}'.");
-                    }
-
-                    string sql = $"ALTER TABLE {tableName} ADD {columnName} {dataType}";
-
-                    connection.Execute(sql);
-
-                    return Ok("Column created successfully");
-                }
-                catch (Exception ex)
-                {
-                    return BadRequest($"Error: {ex.Message}");
+                    return NotFound("Item not found");
                 }
             }
         }
 
-        private bool CheckIfColumnExists(SqlConnection connection, string tableName, string columnName)
-        {
-            // Query the information_schema to check if the column exists in the table
-            string sql = $@"
-        SELECT COUNT(*)
-        FROM information_schema.columns
-        WHERE table_name = @TableName
-        AND column_name = @ColumnName";
-
-            int count = connection.ExecuteScalar<int>(sql, new { TableName = tableName, ColumnName = columnName });
-
-            return count > 0;
-        }
     }
 }
