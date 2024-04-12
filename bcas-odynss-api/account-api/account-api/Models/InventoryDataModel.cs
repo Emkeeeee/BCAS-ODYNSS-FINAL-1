@@ -13,7 +13,6 @@
         public int unqFeat_id { get; set; }
         public string unqFeat { get; set; }
         public int invBy { get; set; }
-        public DateTime invTime { get; set; }
         public int loc_id { get; set; }
     }
 }

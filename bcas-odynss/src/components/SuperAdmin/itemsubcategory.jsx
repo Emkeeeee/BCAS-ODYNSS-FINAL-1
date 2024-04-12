@@ -14,6 +14,8 @@ const SubCategoryPage = () => {
   const breadcrumb = [{ label: "User List" }];
   const home = { icon: "pi pi-home" };
   const toast = useRef(null);
+  const userDataString = sessionStorage.getItem("userData");
+  const userData = JSON.parse(userDataString);
 
   const [category, setCategory] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState([]);
@@ -149,7 +151,7 @@ const SubCategoryPage = () => {
   const handleDeleteYes = () => {
     axios
       .put(
-        `http://localhost:5005/api/Category/DeactivateSubcategory?subCatId=${subCategoryId}`
+        `http://localhost:5005/api/Category/DeactivateSubcategory?subCatId=${subCategoryId}&creatorId=${userData.user_id}`
       )
       .then((response) => {
         console.log(response.data);
@@ -166,7 +168,7 @@ const SubCategoryPage = () => {
   const handleRestoreYes = () => {
     axios
       .put(
-        `http://localhost:5005/api/Category/ActivateSubcategory?subCatId=${subCategoryId}`
+        `http://localhost:5005/api/Category/ActivateSubcategory?subCatId=${subCategoryId}&creatorId=${userData.user_id}`
       )
       .then((response) => {
         console.log(response.data);
@@ -220,7 +222,7 @@ const SubCategoryPage = () => {
     e.preventDefault();
     try {
       const response = await axios.post(
-        "http://localhost:5005/api/Category/AddSubcategory",
+        `http://localhost:5005/api/Category/AddSubcategory?creatorId=${userData.user_id}`,
         postData,
         {
           headers: { "Content-Type": "application/json" },
@@ -247,7 +249,7 @@ const SubCategoryPage = () => {
     e.preventDefault();
     try {
       const response = await axios.put(
-        `http://localhost:5005/api/Category/EditSubcategory`,
+        `http://localhost:5005/api/Category/EditSubcategory?creatorId=${userData.user_id}`,
         {
           SubCatId: parseInt(subCategoryEditValue.subCat_id),
           SubCatName: subCategoryEditValue.subCategory,

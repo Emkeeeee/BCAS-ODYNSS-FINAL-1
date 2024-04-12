@@ -9,6 +9,7 @@ import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Sidebar } from "primereact/sidebar";
+import { TabView, TabPanel } from "primereact/tabview";
 import axios from "axios";
 import QrScanner from "qr-scanner";
 import QRCodeStyling from "qr-code-styling";
@@ -17,8 +18,11 @@ import logo from "../../assets/images/bcaslogo.png";
 const DataView = ({ userId }) => {
   //Data Values
   const [items, setItems] = useState([]);
+  const [disabledItems, setDisabledItems] = useState([]);
   const [expandedItems, setExpandedItems] = useState([]);
+  const [expandedDisabledItems, setExpandedDisabledItems] = useState([]);
   const [expandedRows, setExpandedRows] = useState(null);
+  const [expandedRowsDisabled, setExpandedRowsDisabled] = useState(null);
   const [departments, setDepartments] = useState([]);
   const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [category, setCategory] = useState([]);
@@ -47,6 +51,8 @@ const DataView = ({ userId }) => {
   const [visibleEdit, setVisibleEdit] = useState(false);
   const [visibleQr, setVisibleQr] = useState(false);
   const [visibleBorrow, setVisibleBorrow] = useState(false);
+  const [visibleRestore, setVisibleRestore] = useState(false);
+  const [visibleRequestItem, setVisibleRequestItem] = useState(false);
   const toast = useRef(null);
   const qrRef = useRef(null);
 
@@ -75,17 +81,31 @@ const DataView = ({ userId }) => {
     },
   });
 
-  const StartQR = () => {
-    const videoElem = videoRef.current;
-    const qrScanner = new QrScanner(videoElem, (result) => setQr(result.data), {
-      /* your options or returnDetailedScanResult: true if you're not specifying any other options */
-      highlightScanRegion: true,
-      highlightCodeOutline: true,
-      returnDetailedScanResult: true,
-    });
+  const StartQR = async () => {
+    try {
+      // Request permission to access the camera
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
 
-    // Start scanning
-    qrScanner.start();
+      // Access granted, proceed with QR scanner initialization
+      const videoElem = videoRef.current;
+      videoElem.srcObject = stream;
+
+      const qrScanner = new QrScanner(
+        videoElem,
+        (result) => setQr(result.data),
+        {
+          /* your options or returnDetailedScanResult: true if you're not specifying any other options */
+          highlightScanRegion: true,
+          highlightCodeOutline: true,
+          returnDetailedScanResult: true,
+        }
+      );
+
+      // Start scanning
+      qrScanner.start();
+    } catch (error) {
+      console.error("Error accessing camera:", error);
+    }
   };
 
   const stopVideo = () => {
@@ -98,7 +118,7 @@ const DataView = ({ userId }) => {
 
   useEffect(() => {
     if (Qr.length > 0) {
-      fetchItems();
+      fetchItems(Qr);
       fetchExpandableItems(Qr);
       setvisibleQrSearchVid(false);
       setQr("");
@@ -121,18 +141,33 @@ const DataView = ({ userId }) => {
   });
 
   const [formEditData, setFormEditData] = useState({
-    oldItemUid: "",
-    itemName: "",
-    itemDesc: "",
+    old_item_uid: "",
+    item_name: "",
+    item_desc: "",
     remarks: "",
-    deptId: "",
-    catId: "",
-    subCatId: "",
-    unqFeatId: "",
-    unqFeature: "",
-    inventoryBy: "",
-    locId: "",
-    itemUid: "",
+    dept_id: "",
+    cat_id: "",
+    subCat_id: "",
+    unqFeat_id: "",
+    unqFeat: "",
+    invBy: "",
+    loc_id: "",
+    item_uid: "",
+  });
+
+  const [formBorrowData, setBorrowData] = useState({
+    user_id: "",
+    item_uid: "",
+    borrow_name: "",
+    loc_id: "",
+  });
+
+  const [formRequestData, setRequestData] = useState({
+    requester_id: "",
+    item_uid: "",
+    borrower: "",
+    loc_id: "",
+    dept_id: "",
   });
 
   //Fetch Data For Dropdowns
@@ -145,9 +180,7 @@ const DataView = ({ userId }) => {
 
   const fetchDepartments = async () => {
     try {
-      const response = await axios.get(
-        "http://localhost:5005/api/Inventory/GetDepartments"
-      );
+      const response = await axios.get("/api/Inventory/GetDepartments");
       const transformedDepartments = response.data.map((department) => ({
         label: department.department,
         value: department.dept_id,
@@ -160,9 +193,7 @@ const DataView = ({ userId }) => {
 
   const fetchCategory = async () => {
     try {
-      const response = await axios.get(
-        "http://localhost:5005/api/Inventory/GetCategory"
-      );
+      const response = await axios.get("/api/Inventory/GetCategory");
       const transformedCategory = response.data.map((category) => ({
         label: category.category,
         value: category.cat_id,
@@ -176,7 +207,7 @@ const DataView = ({ userId }) => {
   const fetchSubCategories = async (catId) => {
     try {
       const response = await axios.get(
-        `http://localhost:5005/api/Inventory/GetSubCategory?cat_id=${catId}`
+        `/api/Inventory/GetSubCategory?cat_id=${catId}`
       );
       const transformedSubCategories = response.data.map((subCategory) => ({
         label: subCategory.subCategory,
@@ -208,22 +239,20 @@ const DataView = ({ userId }) => {
   }, [formData.unqFeatId]);
 
   useEffect(() => {
-    if (formEditData.catId) {
-      fetchSubCategories(formEditData.catId);
+    if (formEditData.cat_id) {
+      fetchSubCategories(formEditData.cat_id);
     }
-  }, [formEditData.catId]);
+  }, [formEditData.cat_id]);
 
   useEffect(() => {
-    if (formEditData.unqFeatId) {
-      fetchUniqueFeatureVal(formEditData.unqFeatId);
+    if (formEditData.unqFeat_id) {
+      fetchUniqueFeatureVal(formEditData.unqFeat_id);
     }
-  }, [formEditData.unqFeatId]);
+  }, [formEditData.unqFeat_id]);
 
   const fetchUniqueFeature = async () => {
     try {
-      const response = await axios.get(
-        "http://localhost:5005/api/Inventory/GetUniqueFeature"
-      );
+      const response = await axios.get("/api/Inventory/GetUniqueFeature");
       const transformedUnqFeat = response.data.map((unqFeat) => ({
         label: unqFeat.unqFeature,
         value: unqFeat.unqFeat_id,
@@ -237,7 +266,7 @@ const DataView = ({ userId }) => {
   const fetchUniqueFeatureVal = async (unqFeatId) => {
     try {
       const response = await axios.get(
-        `http://localhost:5005/api/Inventory/GetUniqueFeatureValue?unqFeat_id=${unqFeatId}`
+        `/api/Inventory/GetUniqueFeatureValue?unqFeat_id=${unqFeatId}`
       );
       const transformedUniqueFeatureVal = response.data.map(
         (uniqueFeatureVal) => ({
@@ -253,9 +282,7 @@ const DataView = ({ userId }) => {
 
   const fetchLocation = async () => {
     try {
-      const response = await axios.get(
-        "http://localhost:5005/api/Inventory/GetLocation"
-      );
+      const response = await axios.get("/api/Inventory/GetLocation");
       const transformedLocation = response.data.map((location) => ({
         label: location.location,
         value: location.loc_id,
@@ -282,6 +309,8 @@ const DataView = ({ userId }) => {
     ) {
       fetchItems();
       fetchExpandableItems();
+      fetchDisabledItems();
+      fetchExpandableDisabledItems();
     }
   }, [
     selectedDepartment,
@@ -293,7 +322,7 @@ const DataView = ({ userId }) => {
   const fetchItems = async () => {
     try {
       const response = await axios.get(
-        `http://localhost:5005/api/Inventory/GetActiveItems?dept_id=${selectedDepartment}&cat_id=${selectedCategory}&subCat_id=${selectedSubCategory}&unqFeat_id=${selectedUniqueFeature}`
+        `/api/Inventory/GetActiveItems?dept_id=${selectedDepartment}&cat_id=${selectedCategory}&subCat_id=${selectedSubCategory}&unqFeat_id=${selectedUniqueFeature}&item_uid=${Qr}`
       );
       setItems(response.data);
       console.log(items);
@@ -302,14 +331,37 @@ const DataView = ({ userId }) => {
     }
   };
 
+  const fetchDisabledItems = async () => {
+    try {
+      const response = await axios.get(
+        `/api/Inventory/GetDisabledItem?dept_id=${selectedDepartment}&cat_id=${selectedCategory}&subCat_id=${selectedSubCategory}&unqFeat_id=${selectedUniqueFeature}&item_uid=${Qr}`
+      );
+      setDisabledItems(response.data);
+    } catch (error) {
+      console.error("Error fetching items:", error);
+    }
+  };
+
   const fetchExpandableItems = async () => {
     try {
       const response = await axios.get(
-        `http://localhost:5005/api/Inventory/GetActiveItemsExpandable?dept_id=${selectedDepartment}&cat_id=${selectedCategory}&subCat_id=${selectedSubCategory}&unqFeat_id=${selectedUniqueFeature}
+        `/api/Inventory/GetActiveItemsExpandable?dept_id=${selectedDepartment}&cat_id=${selectedCategory}&subCat_id=${selectedSubCategory}&unqFeat_id=${selectedUniqueFeature}
         &loc_id=${selectedLocation}&item_uid=${Qr}`
       );
       setExpandedItems(response.data);
       console.log(expandedItems);
+    } catch (error) {
+      console.error("Error fetching expandable items:", error);
+    }
+  };
+
+  const fetchExpandableDisabledItems = async () => {
+    try {
+      const response = await axios.get(
+        `/api/Inventory/GetDisabledItemsExpandable?dept_id=${selectedDepartment}&cat_id=${selectedCategory}&subCat_id=${selectedSubCategory}&unqFeat_id=${selectedUniqueFeature}
+        &loc_id=${selectedLocation}&item_uid=${Qr}`
+      );
+      setExpandedDisabledItems(response.data);
     } catch (error) {
       console.error("Error fetching expandable items:", error);
     }
@@ -343,6 +395,35 @@ const DataView = ({ userId }) => {
     );
   };
 
+  const rowExpansionDisabledTemplate = (item) => {
+    const filteredExpandedItems = expandedDisabledItems.filter(
+      (expandedDisabledItems) =>
+        expandedDisabledItems.item_name === item.item_name
+    );
+
+    return (
+      <div className="p-grid">
+        <DataTable
+          value={filteredExpandedItems}
+          className="p-datatable-expandable"
+        >
+          <Column field="item_uid" header="UID" />
+          <Column field="remarks" header="Remarks" />
+          <Column field="invTime" header="Last Inventory Time" />
+          <Column field="invBy" header="Last Inventory By" />
+          <Column field="isOut" header="Borrowed" body={borrowedBodyTemplate} />
+          <Column field="borrowBy" header="Borrowed By" />
+          <Column field="location" header="Location" />
+          <Column
+            body={actionBodyDisabledTemplate}
+            exportable={false}
+            style={{ minWidth: "12rem" }}
+          ></Column>
+        </DataTable>
+      </div>
+    );
+  };
+
   const borrowedBodyTemplate = (rowData) => {
     return rowData.isOut ? "Yes" : "No";
   };
@@ -362,13 +443,55 @@ const DataView = ({ userId }) => {
   const handleDeleteYes = () => {
     axios
       .put(
-        `http://localhost:5005/api/Inventory/DeactivateItem?itemUID=${itemUid}`
+        `/api/Inventory/DeactivateItem?itemUID=${itemUid}&creatorId=${userData.user_id}`
       )
       .then((response) => {
         console.log(response.data);
         fetchExpandableItems();
         fetchItems();
+        fetchExpandableDisabledItems();
+        fetchDisabledItems();
         setvisibleDelete(false);
+      })
+      .catch((error) => {
+        console.log(`Error: ${error.response.data}`);
+      });
+  };
+
+  const handleBorrowSubmit = (e) => {
+    e.preventDefault();
+    axios
+      .put(`/api/Inventory/BorrowItem`, formBorrowData)
+      .then((response) => {
+        console.log(response.data);
+        fetchExpandableItems();
+        fetchItems();
+        const message = "Item successfully borrowed";
+        setVisibleBorrow(false);
+        showSuccess(message);
+      })
+      .catch((error) => {
+        console.log(`Error: ${error.response.data}`);
+      });
+  };
+
+  const handleRestore = (uid) => {
+    // You can perform actions with the UID here, like storing it in state or passing it to another function
+    setItemUid(uid);
+    setVisibleRestore(true);
+  };
+
+  const handleRestoreYes = () => {
+    axios
+      .put(
+        `/api/Inventory/ActivateItem?itemUID=${itemUid}&creatorId=${userData.user_id}`
+      )
+      .then((response) => {
+        setVisibleRestore(false);
+        fetchExpandableItems();
+        fetchItems();
+        fetchExpandableDisabledItems();
+        fetchDisabledItems();
       })
       .catch((error) => {
         console.log(`Error: ${error.response.data}`);
@@ -422,20 +545,71 @@ const DataView = ({ userId }) => {
   };
 
   const handleBorrow = (itemUid) => {
+    setBorrowData({
+      user_id: userData.user_id,
+      item_uid: itemUid,
+    });
     setVisibleBorrow(true);
+  };
+
+  const handleRequestItem = (itemUid, deptId) => {
+    setVisibleRequestItem(true);
+    setRequestData({
+      requester_id: userData.user_id,
+      item_uid: itemUid,
+      dept_id: deptId,
+    });
+  };
+
+  const handleRequestSubmit = (e) => {
+    e.preventDefault();
+
+    axios
+      .post("/api/Inventory/RequestItem", formRequestData)
+      .then((response) => {
+        console.log("Request created successfully:", response.data);
+        const message = "Request created successfully.";
+        setVisibleRequestItem(false);
+        setRequestData({
+          requester_id: "",
+          item_uid: "",
+          borrower: "",
+          loc_id: "",
+          dept_id: "",
+        });
+        showSuccess(message);
+        // Handle success, if needed
+      })
+      .catch((error) => {
+        console.error("Error creating request:", error);
+        // Handle error, if needed
+      });
   };
 
   const actionBodyTemplate = (rowData) => {
     return (
       <React.Fragment>
         <Button
+          icon="pi pi-envelope"
+          rounded
+          outlined
+          severity="warning"
+          className="mr-2"
+          onClick={() => handleRequestItem(rowData.item_uid, rowData.dept_id)}
+          visible={
+            rowData.isOut === false && rowData.dept_id !== userData.department
+          }
+        />
+        <Button
           icon="pi pi-user"
           rounded
           outlined
           severity="secondary"
           className="mr-2"
-          onClick={() => handleBorrow()}
-          visible={rowData.isOut === false}
+          onClick={() => handleBorrow(rowData.item_uid)}
+          visible={
+            rowData.isOut === false && rowData.dept_id === userData.department
+          }
         />
         <Button
           icon="pi pi-pencil"
@@ -443,7 +617,9 @@ const DataView = ({ userId }) => {
           outlined
           className="mr-2"
           onClick={() => handleEdit(rowData.item_uid)}
-          visible={rowData.isOut === false}
+          visible={
+            rowData.isOut === false && rowData.dept_id === userData.department
+          }
         />
         <Button
           icon="pi pi-trash"
@@ -452,7 +628,9 @@ const DataView = ({ userId }) => {
           severity="danger"
           className="mr-2"
           onClick={() => handleDelete(rowData.item_uid)}
-          visible={rowData.isOut === false}
+          visible={
+            rowData.isOut === false && rowData.dept_id === userData.department
+          }
         />
         <Button
           icon="pi pi-qrcode"
@@ -460,6 +638,20 @@ const DataView = ({ userId }) => {
           outlined
           severity="info"
           onClick={() => handleQRCodeGen(rowData.item_uid)}
+        />
+      </React.Fragment>
+    );
+  };
+
+  const actionBodyDisabledTemplate = (rowData) => {
+    return (
+      <React.Fragment>
+        <Button
+          icon="pi pi-undo"
+          rounded
+          outlined
+          severity="info"
+          onClick={() => handleRestore(rowData.item_uid)}
         />
       </React.Fragment>
     );
@@ -491,11 +683,21 @@ const DataView = ({ userId }) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleInputBorrowChange = (e) => {
+    const { name, value } = e.target;
+    setBorrowData((prevState) => ({ ...prevState, [name]: value }));
+  };
+
+  const handleInputRequestChange = (e) => {
+    const { name, value } = e.target;
+    setRequestData((prevState) => ({ ...prevState, [name]: value }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const response = await axios.post(
-        "http://localhost:5005/api/Inventory/AddItem",
+        `/api/Inventory/AddItem?creatorId=${userData.user_id}`,
         formData,
         { headers: { "Content-Type": "application/json" } }
       );
@@ -505,7 +707,6 @@ const DataView = ({ userId }) => {
         itemName: "",
         itemDesc: "",
         remarks: "",
-        deptId: "",
         catId: "",
         subCatId: "",
         unqFeatId: "",
@@ -526,27 +727,55 @@ const DataView = ({ userId }) => {
   const handleEditSubmit = (e) => {
     e.preventDefault();
     // Handle form submission here
+    try {
+      axios
+        .put(
+          `/api/Inventory/UpdateItemViaUid?creatorId=${userData.user_id}`,
+          formEditData
+        )
+        .then((response) => {
+          setFormEditData({
+            itemUid: "",
+            itemName: "",
+            itemDesc: "",
+            remarks: "",
+            catId: "",
+            subCatId: "",
+            unqFeatId: "",
+            unqFeature: "",
+            invBy: "",
+            locId: "",
+          });
+          setVisibleEdit(false);
+          showSuccess();
+          fetchExpandableItems();
+          fetchItems();
+        });
+    } catch (error) {
+      console.error("Error:", error);
+      showFail();
+    }
   };
 
   const fetchItemDetails = async () => {
     try {
       const response = await axios.get(
-        `http://localhost:5005/api/Inventory/GetItemViaUid?dept_id=${selectedDepartment}&item_uid=${itemUid}`
+        `/api/Inventory/GetItemViaUid?dept_id=${selectedDepartment}&item_uid=${itemUid}`
       );
       const itemData = response.data;
       console.log(itemData);
       setFormEditData({
-        oldItemUid: itemData[0].item_uid,
-        itemName: itemData[0].item_name,
-        itemDesc: itemData[0].item_desc,
+        old_item_uid: itemData[0].item_uid,
+        item_name: itemData[0].item_name,
+        item_desc: itemData[0].item_desc,
         remarks: itemData[0].remarks,
-        deptId: itemData[0].dept_id,
-        catId: itemData[0].cat_id,
-        subCatId: itemData[0].subCat_id,
-        unqFeatId: itemData[0].unqFeat_id,
-        unqFeature: itemData[0].unqFeat,
-        inventoryBy: userData.user_id,
-        locId: itemData[0].loc_id,
+        dept_id: itemData[0].dept_id,
+        cat_id: itemData[0].cat_id,
+        subCat_id: itemData[0].subCat_id,
+        unqFeat_id: itemData[0].unqFeat_id,
+        unqFeat: itemData[0].unqFeat,
+        invBy: userData.user_id,
+        loc_id: itemData[0].loc_id,
       });
     } catch (error) {
       console.error("Error fetching item details:", error);
@@ -571,12 +800,12 @@ const DataView = ({ userId }) => {
   };
 
   useEffect(() => {
-    const { itemName, deptId, catId, unqFeature, locId } = formData;
+    const { itemName, catId, subCatId, unqFeature } = formData;
 
     // Check if any required field is undefined, null, or an empty string
-    if (itemName && deptId && catId && unqFeature && locId) {
+    if (itemName && catId && subCatId && unqFeature) {
       // All required fields have values, so append values to formData
-      const newItemUid = `${itemName}_${deptId}_${catId}_${unqFeature}_${locId}`;
+      const newItemUid = `${itemName}_${catId}_${subCatId}_${unqFeature}`;
       setFormData((prevState) => ({ ...prevState, itemUid: newItemUid }));
     } else {
       // Any required field is empty, so reset itemUid to an empty string
@@ -586,36 +815,36 @@ const DataView = ({ userId }) => {
     formData.itemName,
     formData.deptId,
     formData.catId,
+    formData.subCatId,
     formData.unqFeature,
-    formData.locId,
   ]);
 
   useEffect(() => {
-    const { itemName, deptId, catId, unqFeature, locId } = formEditData;
+    const { item_name, cat_id, subCat_id, unqFeat } = formEditData;
 
     // Check if any required field is undefined, null, or an empty string
-    if (itemName && deptId && catId && unqFeature && locId) {
+    if (item_name && cat_id && subCat_id && unqFeat) {
       // All required fields have values, so append values to formData
-      const newItemUid = `${itemName}_${deptId}_${catId}_${unqFeature}_${locId}`;
-      setFormEditData((prevState) => ({ ...prevState, itemUid: newItemUid }));
+      const newItemUid = `${item_name}_${cat_id}_${subCat_id}_${unqFeat}`;
+      setFormEditData((prevState) => ({ ...prevState, item_uid: newItemUid }));
     } else {
       // Any required field is empty, so reset itemUid to an empty string
-      setFormEditData((prevState) => ({ ...prevState, itemUid: "" }));
+      setFormEditData((prevState) => ({ ...prevState, item_uid: "" }));
     }
   }, [
-    formEditData.itemName,
-    formEditData.deptId,
-    formEditData.catId,
-    formEditData.unqFeature,
-    formEditData.locId,
+    formEditData.item_name,
+    formEditData.dept_id,
+    formEditData.cat_id,
+    formEditData.subCat_id,
+    formEditData.unqFeat,
   ]);
 
   //Toast
-  const showSuccess = () => {
+  const showSuccess = (message) => {
     toast.current.show({
       severity: "success",
       summary: "Success",
-      detail: "Message Content",
+      detail: message,
       life: 3000,
     });
   };
@@ -636,7 +865,10 @@ const DataView = ({ userId }) => {
     setSelectedUniqueFeatureVal("");
     setSelectedLocation("");
     setQr("");
+    fetchItems("");
     fetchExpandableItems("");
+    fetchDisabledItems("");
+    fetchExpandableDisabledItems("");
   };
 
   const [qrUploadResult, setQrUploadResult] = useState("");
@@ -647,13 +879,16 @@ const DataView = ({ userId }) => {
       return;
     }
     QrScanner.scanImage(file, { returnDetailedScanResult: true })
-      .then((result) => setQrUploadResult(result))
+      .then((result) => {
+        setQr(result.data);
+        setvisibleQrSearchUpload(false);
+      })
       .catch((e) => setQrUploadResult({ data: e || "No QR code found." }));
   };
 
   const handleAddItem = () => {
-    setFormData({ invBy: userData.user_id });
-    setvisibleAddNew(true);
+    setFormData({ invBy: userData.user_id, deptId: userData.department });
+    setVisibleAction(true);
   };
 
   return (
@@ -758,44 +993,153 @@ const DataView = ({ userId }) => {
       />
 
       <div className="card shadow-2">
-        <DataTable
-          value={items}
-          expandedRows={expandedRows}
-          onRowToggle={(e) => setExpandedRows(e.data)}
-          rowExpansionTemplate={rowExpansionTemplate}
-          dataKey="item_name"
-          removableSort
-          paginator
-          rows={5}
-          rowsPerPageOptions={[5, 10, 25, 50]}
-          scrollable
-          scrollHeight="550px"
-        >
-          <Column expander={allowExpansion} style={{ width: "3em" }} />
-          <Column sortable field="item_name" header="Item Name" />
-          <Column sortable field="item_desc" header="Item Description" />
-          <Column sortable field="qty" header="Qty" />
-          <Column sortable field="stock" header="Stock" />
-        </DataTable>
+        <TabView>
+          <TabPanel header="Active Items">
+            <DataTable
+              value={items}
+              expandedRows={expandedRowsDisabled}
+              onRowToggle={(e) => setExpandedRowsDisabled(e.data)}
+              rowExpansionTemplate={rowExpansionTemplate}
+              dataKey="item_name"
+              removableSort
+              paginator
+              rows={5}
+              rowsPerPageOptions={[5, 10, 25, 50]}
+              scrollable
+              scrollHeight="550px"
+            >
+              <Column expander={allowExpansion} style={{ width: "3em" }} />
+              <Column sortable field="item_name" header="Item Name" />
+              <Column sortable field="item_desc" header="Item Description" />
+              <Column sortable field="qty" header="Qty" />
+              <Column sortable field="stock" header="Stock" />
+            </DataTable>
+          </TabPanel>
+
+          <TabPanel header="Disabled Items">
+            <DataTable
+              value={disabledItems}
+              expandedRows={expandedRows}
+              onRowToggle={(e) => setExpandedRows(e.data)}
+              rowExpansionTemplate={rowExpansionDisabledTemplate}
+              dataKey="item_name"
+              removableSort
+              paginator
+              rows={5}
+              rowsPerPageOptions={[5, 10, 25, 50]}
+              scrollable
+              scrollHeight="550px"
+            >
+              <Column expander={allowExpansion} style={{ width: "3em" }} />
+              <Column sortable field="item_name" header="Item Name" />
+              <Column sortable field="item_desc" header="Item Description" />
+              <Column sortable field="qty" header="Qty" />
+              <Column sortable field="stock" header="Stock" />
+            </DataTable>
+          </TabPanel>
+        </TabView>
       </div>
 
       {/* Dialog Boxes */}
       <Dialog
+        header="Request Item"
+        visible={visibleRequestItem}
+        className="dialog-box"
+        onHide={() => setVisibleRequestItem(false)}
+      >
+        <form onSubmit={handleRequestSubmit} className="flex flex-column">
+          <div className="flex flex-column mb-2">
+            <label className="mb-2" htmlFor="borrow_name">
+              Borrower's Name:
+            </label>
+            <InputText
+              name="borrower"
+              value={formRequestData.borrower}
+              onChange={handleInputRequestChange}
+              required
+            />
+          </div>
+
+          <div className="flex flex-column mb-2">
+            <label className="mb-2" htmlFor="locId">
+              Location:
+            </label>
+            <Dropdown
+              name="loc_id"
+              value={formRequestData.loc_id}
+              options={location}
+              onChange={handleInputRequestChange}
+              optionLabel="label"
+              placeholder="Select a Location"
+            />
+          </div>
+
+          <Button type="submit" label="Borrow Item" />
+        </form>
+      </Dialog>
+
+      <Dialog
+        header="Confirm Restore"
+        visible={visibleRestore}
+        onHide={() => setVisibleRestore(false)}
+        className="text-center w-3 dialog-box"
+      >
+        <p>Are you sure you want to restore this item?</p>
+
+        <Button
+          label="Yes"
+          className="mr-5 w-3"
+          severity="danger"
+          onClick={handleRestoreYes}
+        />
+        <Button
+          label="No"
+          className="w-3"
+          onClick={() => setVisibleRestore(false)}
+        />
+      </Dialog>
+      <Dialog
         header="Borrow Item"
         visible={visibleBorrow}
-        style={{ width: "50vw" }}
         onHide={() => setVisibleBorrow(false)}
-        className="text-center w-3"
+        className="dialog-box"
       >
-        TITE
+        <form onSubmit={handleBorrowSubmit} className="flex flex-column">
+          <div className="flex flex-column mb-2">
+            <label className="mb-2" htmlFor="borrow_name">
+              Borrower's Name:
+            </label>
+            <InputText
+              name="borrow_name"
+              value={formBorrowData.borrow_name}
+              onChange={handleInputBorrowChange}
+              required
+            />
+          </div>
+
+          <div className="flex flex-column mb-2">
+            <label className="mb-2" htmlFor="locId">
+              Location:
+            </label>
+            <Dropdown
+              name="loc_id"
+              value={formBorrowData.loc_id}
+              options={location}
+              onChange={handleInputBorrowChange}
+              optionLabel="label"
+              placeholder="Select a Location"
+            />
+          </div>
+
+          <Button type="submit" label="Borrow Item" />
+        </form>
       </Dialog>
 
       <Dialog
         header="QR Code Generator"
         visible={visibleQr}
-        style={{ width: "50vw" }}
         onHide={() => setVisibleQr(false)}
-        className="text-center w-3"
+        className="text-center dialog-box"
       >
         <div ref={qrRef}></div>
         <p>{itemUid}</p>
@@ -805,9 +1149,8 @@ const DataView = ({ userId }) => {
       <Dialog
         header="Confirm Delete"
         visible={visibleDelete}
-        style={{ width: "50vw" }}
         onHide={() => setvisibleDelete(false)}
-        className="text-center w-3"
+        className="text-center dialog-box"
       >
         <p>Are you sure you want to delete item {itemUid} ?</p>
 
@@ -827,7 +1170,7 @@ const DataView = ({ userId }) => {
       <Dialog
         header="Choose an action"
         visible={visibleAction}
-        style={{ width: "30vw" }}
+        className="dialog-box"
         onHide={() => setVisibleAction(false)}
         footer={footerContent}
       >
@@ -846,25 +1189,26 @@ const DataView = ({ userId }) => {
       </Dialog>
 
       <Dialog
-        header="Search Via Qr"
+        header="Search via Qr"
         visible={visibleQrSearch}
-        style={{ width: "20vw" }}
         onHide={() => setvisibleQrSearch(false)}
-        className="flex justify-content-center"
+        className="justify-content-center flex-wrap dialog-box"
       >
-        <Button label="Scan Search" onClick={handleQrSearchVid} />
-
-        <Divider className="bg-primary-300" align="center">
+        <div className="flex align-items-center justify-content-center">
+          <Button label="Scan Search" onClick={handleQrSearchVid} />
+        </div>
+        <Divider align="center">
           <span className="p-tag">OR</span>
         </Divider>
-
-        <Button label="Upload Search" onClick={handleQrSearchUpload} />
+        <div className="flex align-items-center justify-content-center">
+          <Button label="Upload Search" onClick={handleQrSearchUpload} />
+        </div>
       </Dialog>
 
       <Dialog
         header="Search Via Qr"
         visible={visibleQrSearchVid}
-        style={{ width: "50vw" }}
+        className="dialog-box"
         onHide={() => setvisibleQrSearchVid(false)}
       >
         <h3>Scan QR:</h3>
@@ -878,7 +1222,7 @@ const DataView = ({ userId }) => {
       <Dialog
         header="Search Via Qr"
         visible={visibleQrSearchUpload}
-        style={{ width: "20vw" }}
+        className="dialog-box"
         onHide={() => setvisibleQrSearchUpload(false)}
       >
         <h3>Upload QR: </h3>
@@ -889,7 +1233,7 @@ const DataView = ({ userId }) => {
       <Dialog
         header="Add Existing Item"
         visible={visibleAddExist}
-        style={{ width: "30vw" }}
+        className="dialog-box"
         onHide={() => setvisibleAddExist(false)}
         footer={footerContent}
       ></Dialog>
@@ -897,9 +1241,8 @@ const DataView = ({ userId }) => {
       <Dialog
         header="Add New Item"
         visible={visibleAddNew}
-        style={{ width: "30vw" }}
+        className="dialog-box"
         onHide={() => setvisibleAddNew(false)}
-        footer={footerContent}
       >
         <div class="formgrid grid">
           <div class="flex flex-column field col">
@@ -944,19 +1287,6 @@ const DataView = ({ userId }) => {
                 />
               </div>
               <div className="flex flex-column mb-2">
-                <label className="mb-2" htmlFor="deptId">
-                  Department:
-                </label>
-                <Dropdown
-                  name="deptId"
-                  value={formData.deptId} // Connect to formData.deptId
-                  options={departments}
-                  onChange={handleInputChange} // Update formData.deptId
-                  optionLabel="label"
-                  placeholder="Select a Department"
-                />
-              </div>
-              <div className="flex flex-column mb-2">
                 <label className="mb-2" htmlFor="catId">
                   Category:
                 </label>
@@ -966,7 +1296,7 @@ const DataView = ({ userId }) => {
                   options={category}
                   onChange={handleInputChange}
                   optionLabel="label"
-                  placeholder="Select a Department"
+                  placeholder="Select a Category"
                 />
               </div>
               <div className="flex flex-column mb-2">
@@ -1025,14 +1355,12 @@ const DataView = ({ userId }) => {
               </div>
               {/* Display itemUid */}
               <div className="flex flex-column mb-2">
-                <label className="mb-2" htmlFor="itemUid">
-                  Generated itemUid:
-                </label>
                 <InputText
                   name="itemUid"
                   value={formData.itemUid}
                   readOnly
                   required
+                  hidden
                 />
               </div>
 
@@ -1045,9 +1373,8 @@ const DataView = ({ userId }) => {
       <Dialog
         header="Edit Item"
         visible={visibleEdit}
-        style={{ width: "30vw" }}
+        className="dialog-box"
         onHide={() => setVisibleEdit(false)}
-        footer={footerContent}
       >
         <div class="formgrid grid">
           <div class="flex flex-column field col">
@@ -1058,8 +1385,8 @@ const DataView = ({ userId }) => {
                   Item Name:
                 </label>
                 <InputText
-                  name="itemName"
-                  value={formEditData.itemName}
+                  name="item_name"
+                  value={formEditData.item_name}
                   onChange={handleInputEditChange}
                   required
                 />
@@ -1070,8 +1397,8 @@ const DataView = ({ userId }) => {
                 </label>
                 <InputTextarea
                   autoResize
-                  name="itemDesc"
-                  value={formEditData.itemDesc}
+                  name="item_desc"
+                  value={formEditData.item_desc}
                   onChange={handleInputEditChange}
                   required
                   rows={5}
@@ -1093,29 +1420,16 @@ const DataView = ({ userId }) => {
                 />
               </div>
               <div className="flex flex-column mb-2">
-                <label className="mb-2" htmlFor="deptId">
-                  Department:
-                </label>
-                <Dropdown
-                  name="deptId"
-                  value={formEditData.deptId} // Connect to formData.deptId
-                  options={departments}
-                  onChange={handleInputEditChange} // Update formData.deptId
-                  optionLabel="label"
-                  placeholder="Select a Department"
-                />
-              </div>
-              <div className="flex flex-column mb-2">
                 <label className="mb-2" htmlFor="catId">
                   Category:
                 </label>
                 <Dropdown
-                  name="catId"
-                  value={formEditData.catId}
+                  name="cat_id"
+                  value={formEditData.cat_id}
                   options={category}
                   onChange={handleInputEditChange}
                   optionLabel="label"
-                  placeholder="Select a Department"
+                  placeholder="Select a Category"
                 />
               </div>
               <div className="flex flex-column mb-2">
@@ -1123,8 +1437,8 @@ const DataView = ({ userId }) => {
                   Subcategory:
                 </label>
                 <Dropdown
-                  name="subCatId"
-                  value={formEditData.subCatId}
+                  name="subCat_id"
+                  value={formEditData.subCat_id}
                   options={subCategory}
                   onChange={handleInputEditChange}
                   optionLabel="label"
@@ -1137,8 +1451,8 @@ const DataView = ({ userId }) => {
                   Unique Feature Category:
                 </label>
                 <Dropdown
-                  name="unqFeatId"
-                  value={formEditData.unqFeatId}
+                  name="unqFeat_id"
+                  value={formEditData.unqFeat_id}
                   options={uniqueFeature}
                   onChange={handleInputEditChange}
                   optionLabel="label"
@@ -1150,8 +1464,8 @@ const DataView = ({ userId }) => {
                   Unique Feature:
                 </label>
                 <Dropdown
-                  name="unqFeature"
-                  value={formEditData.unqFeature} // You can set a default value if needed
+                  name="unqFeat"
+                  value={formEditData.unqFeat} // You can set a default value if needed
                   options={uniqueFeatureVal}
                   onChange={handleInputEditChange} // Handle subcategory selection here
                   optionLabel="label"
@@ -1164,8 +1478,8 @@ const DataView = ({ userId }) => {
                   Location:
                 </label>
                 <Dropdown
-                  name="locId"
-                  value={formEditData.locId}
+                  name="loc_id"
+                  value={formEditData.loc_id}
                   options={location}
                   onChange={handleInputEditChange}
                   optionLabel="label"
@@ -1174,15 +1488,13 @@ const DataView = ({ userId }) => {
               </div>
               {/* Display itemUid */}
               <div className="flex flex-column mb-2">
-                <label className="mb-2" htmlFor="itemUid">
-                  Generated itemUid:
-                </label>
                 <InputText
-                  name="itemUid"
-                  value={formEditData.itemUid}
+                  name="item_uid"
+                  value={formEditData.item_uid}
                   onChange={handleInputEditChange}
                   readOnly
                   required
+                  hidden
                 />
               </div>
 

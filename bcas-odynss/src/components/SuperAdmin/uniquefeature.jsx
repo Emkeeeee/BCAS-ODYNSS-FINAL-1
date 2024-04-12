@@ -13,6 +13,8 @@ const UniqueFeaturePage = () => {
   const breadcrumb = [{ label: "Unique Feature" }];
   const home = { icon: "pi pi-home" };
   const toast = useRef(null);
+  const userDataString = sessionStorage.getItem("userData");
+  const userData = JSON.parse(userDataString);
 
   const [uniqueFeature, setUniqueFeature] = useState([]);
   const [disabledUniqueFeature, setDisabledUniqueFeature] = useState([]);
@@ -112,7 +114,7 @@ const UniqueFeaturePage = () => {
   const handleDeleteYes = () => {
     axios
       .put(
-        `http://localhost:5005/api/Category/DeactivateUniqueFeature?unqFeatId=${uniqueFeatureId}`
+        `http://localhost:5005/api/Category/DeactivateUniqueFeature?unqFeatId=${uniqueFeatureId}&creatorId=${userData.user_id}`
       )
       .then((response) => {
         console.log(response.data);
@@ -129,7 +131,7 @@ const UniqueFeaturePage = () => {
   const handleRestoreYes = () => {
     axios
       .put(
-        `http://localhost:5005/api/Category/ActivateUniqueFeature?unqFeatId=${uniqueFeatureId}`
+        `http://localhost:5005/api/Category/ActivateUniqueFeature?unqFeatId=${uniqueFeatureId}&creatorId=${userData.user_id}`
       )
       .then((response) => {
         console.log(response.data);
@@ -177,7 +179,7 @@ const UniqueFeaturePage = () => {
     e.preventDefault();
     try {
       const response = await axios.post(
-        "http://localhost:5005/api/Category/AddUniqueFeature",
+        `http://localhost:5005/api/Category/AddUniqueFeature?creatorId=${userData.user_id}`,
         uniqueFeatureValue,
         {
           headers: { "Content-Type": "application/json" },
@@ -202,7 +204,7 @@ const UniqueFeaturePage = () => {
     e.preventDefault();
     try {
       const response = await axios.put(
-        "http://localhost:5005/api/Category/EditUniqueFeature",
+        `http://localhost:5005/api/Category/EditUniqueFeature?creatorId=${userData.user_id}`,
         {
           unqFeatId: parseInt(uniqueFeatureEditValue.unqFeat_id),
           unqFeatName: uniqueFeatureEditValue.unqFeature,

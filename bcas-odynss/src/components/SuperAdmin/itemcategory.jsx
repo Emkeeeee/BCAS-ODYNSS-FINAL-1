@@ -13,6 +13,8 @@ const ItemCategory = () => {
   const breadcrumb = [{ label: "Category List" }];
   const home = { icon: "pi pi-home" };
   const toast = useRef(null);
+  const userDataString = sessionStorage.getItem("userData");
+  const userData = JSON.parse(userDataString);
 
   const [category, setCategory] = useState([]);
   const [disabledCategory, setDisabledCategory] = useState([]);
@@ -36,7 +38,7 @@ const ItemCategory = () => {
   const fetchItemDetails = async (catId) => {
     try {
       const response = await axios.get(
-        `http://localhost:5005/api/Category/GetCategoryViaUid?catId=${catId}`
+        `http://localhost:5005/api/Category/GetCategoryViaUid?catId=${catId}&creatorId=${userData.user_id}`
       );
       const itemData = response.data;
       console.log(itemData);
@@ -115,7 +117,7 @@ const ItemCategory = () => {
   const handleDeleteYes = () => {
     axios
       .put(
-        `http://localhost:5005/api/Category/DeactivateCategory?catId=${categoryId}`
+        `http://localhost:5005/api/Category/DeactivateCategory?catId=${categoryId}&creatorId=${userData.user_id}`
       )
       .then((response) => {
         console.log(response.data);
@@ -132,7 +134,7 @@ const ItemCategory = () => {
   const handleRestoreYes = () => {
     axios
       .put(
-        `http://localhost:5005/api/Category/ActivateCategory?catId=${categoryId}`
+        `http://localhost:5005/api/Category/ActivateCategory?catId=${categoryId}&creatorId=${userData.user_id}`
       )
       .then((response) => {
         console.log(response.data);
@@ -177,7 +179,7 @@ const ItemCategory = () => {
     e.preventDefault();
     try {
       const response = await axios.post(
-        "http://localhost:5005/api/Category/AddCategory",
+        `http://localhost:5005/api/Category/AddCategory?&creatorId=${userData.user_id}`,
         categoryValue,
         {
           headers: { "Content-Type": "application/json" },
@@ -204,7 +206,7 @@ const ItemCategory = () => {
     e.preventDefault();
     try {
       const response = await axios.put(
-        "http://localhost:5005/api/Category/EditCategory",
+        `http://localhost:5005/api/Category/EditCategory?creatorId=${userData.user_id}`,
         {
           catId: parseInt(categoryEditValue.cat_id),
           catName: categoryEditValue.category,

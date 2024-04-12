@@ -39,7 +39,7 @@ if (builder.Environment.IsDevelopment())
 // CORS policy
 builder.Services.AddCors(p => p.AddPolicy("corspolicy", build =>
 {
-    build.WithOrigins("http://localhost:3001", "http://localhost:3000")
+    build.WithOrigins("http://localhost:3001", "http://localhost:3000", "http://192.168.1.153:3000")
          .AllowAnyMethod()
          .AllowAnyHeader();
 }));

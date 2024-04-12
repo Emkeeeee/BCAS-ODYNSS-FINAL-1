@@ -22,6 +22,23 @@ namespace account_api.Controllers
             _categoryRepo = new CategoryRepo(_connectionString);
         }
 
+        [HttpGet("CategoryLogs")]
+        public IActionResult GetCategoryLogs()
+        {
+            try
+            {
+                IEnumerable<CategoryLogModel> categoryLogs = _categoryRepo.GetCategoryLogs();
+                return Ok(categoryLogs);
+            }
+            catch (Exception ex)
+            {
+                // Log the exception
+                Console.WriteLine($"An error occurred: {ex.Message}");
+                return StatusCode(500, "Internal server error");
+            }
+        }
+
+
         // Department Category
 
         [HttpGet("GetDeactDepartments")]
@@ -75,11 +92,11 @@ namespace account_api.Controllers
         }
 
         [HttpPut("DeactivateDepartment")]
-        public IActionResult DeactivateDepartment(int deptId)
+        public IActionResult DeactivateDepartment(int deptId, int creatorId)
         {
             try
             {
-                _categoryRepo.DeactivateDepartment(deptId);
+                _categoryRepo.DeactivateDepartment(deptId, creatorId);
                 return Ok($"'{deptId}' deactivated successfully.");
             }
             catch (Exception ex)
@@ -90,11 +107,11 @@ namespace account_api.Controllers
 
 
         [HttpPut("ActivateDepartment")]
-        public IActionResult ActivateDepartment(int deptId)
+        public IActionResult ActivateDepartment(int deptId, int creatorId)
         {
             try
             {
-                _categoryRepo.ActivateDepartment(deptId);
+                _categoryRepo.ActivateDepartment(deptId, creatorId);
                 return Ok($"'{deptId}' activated successfully.");
             }
             catch (Exception ex)
@@ -104,11 +121,11 @@ namespace account_api.Controllers
         }
 
         [HttpPut("EditDepartment")]
-        public IActionResult EditDepartment([FromBody] DepartmentEditModel model)
+        public IActionResult EditDepartment([FromBody] DepartmentEditModel model, int creatorId)
         {
             try
             {
-                _categoryRepo.EditDepartment(model.DeptId, model.DeptName, model.Acronym);
+                _categoryRepo.EditDepartment(model.DeptId, model.DeptName, model.Acronym, creatorId);
                 return Ok($"{model.DeptId} edited successfully.");
             }
             catch (Exception ex)
@@ -118,7 +135,7 @@ namespace account_api.Controllers
         }
 
         [HttpPost("AddDepartment")]
-        public IActionResult AddDepartment([FromBody] DeptAdd model)
+        public IActionResult AddDepartment([FromBody] DeptAdd model, int creatorId)
         {
             if (model == null)
             {
@@ -134,7 +151,7 @@ namespace account_api.Controllers
 
             try
             {
-                _categoryRepo.AddDepartment(department);
+                _categoryRepo.AddDepartment(department, creatorId);
                 return Ok("Department added successfully");
             }
             catch (InvalidOperationException ex)
@@ -205,11 +222,11 @@ namespace account_api.Controllers
         }
 
         [HttpPut("DeactivateSubcategory")]
-        public IActionResult DeactivateSubcategory(int subCatId)
+        public IActionResult DeactivateSubcategory(int subCatId, int creatorId)
         {
             try
             {
-                _categoryRepo.DeactivateSubcategory(subCatId);
+                _categoryRepo.DeactivateSubcategory(subCatId, creatorId);
                 return Ok($"'{subCatId}' deactivated successfully.");
             }
             catch (Exception ex)
@@ -219,11 +236,11 @@ namespace account_api.Controllers
         }
 
         [HttpPut("ActivateSubcategory")]
-        public IActionResult ActivateSubcategory(int subCatId)
+        public IActionResult ActivateSubcategory(int subCatId, int creatorId)
         {
             try
             {
-                _categoryRepo.ActivateSubcategory(subCatId);
+                _categoryRepo.ActivateSubcategory(subCatId, creatorId);
                 return Ok($"'{subCatId}' activated successfully.");
             }
             catch (Exception ex)
@@ -233,11 +250,11 @@ namespace account_api.Controllers
         }
 
         [HttpPut("EditSubcategory")]
-        public IActionResult EditSubcategory([FromBody] SubcategoryEditModel model)
+        public IActionResult EditSubcategory([FromBody] SubcategoryEditModel model, int creatorId)
         {
             try
             {
-                _categoryRepo.EditSubcategory(model.SubCatId, model.SubCatName, model.Acronym);
+                _categoryRepo.EditSubcategory(model.SubCatId, model.SubCatName, model.Acronym, creatorId);
                 return Ok($"{model.SubCatId} edited successfully.");
             }
             catch (Exception ex)
@@ -247,7 +264,7 @@ namespace account_api.Controllers
         }
 
         [HttpPost("AddSubcategory")]
-        public IActionResult AddSubcategory([FromBody] SubCatAdd model)
+        public IActionResult AddSubcategory([FromBody] SubCatAdd model, int creatorId)
         {
             if (model == null)
             {
@@ -264,7 +281,7 @@ namespace account_api.Controllers
 
             try
             {
-                _categoryRepo.AddSubcategory(subCategory);
+                _categoryRepo.AddSubcategory(subCategory, creatorId);
                 return Ok("Department added successfully");
             }
             catch (InvalidOperationException ex)
@@ -327,11 +344,11 @@ namespace account_api.Controllers
         }
 
         [HttpPut("DeactivateCategory")]
-        public IActionResult DeactivateCategory(int catId)
+        public IActionResult DeactivateCategory(int catId, int creatorId)
         {
             try
             {
-                _categoryRepo.DeactivateCategory(catId);
+                _categoryRepo.DeactivateCategory(catId, creatorId);
                 return Ok($"'{catId}' deactivated successfully.");
             }
             catch (Exception ex)
@@ -341,11 +358,11 @@ namespace account_api.Controllers
         }
 
         [HttpPut("ActivateCategory")]
-        public IActionResult ActivateCategory(int catId)
+        public IActionResult ActivateCategory(int catId, int creatorId)
         {
             try
             {
-                _categoryRepo.ActivateCategory(catId);
+                _categoryRepo.ActivateCategory(catId, creatorId);
                 return Ok($"'{catId}' activated successfully.");
             }
             catch (Exception ex)
@@ -355,11 +372,11 @@ namespace account_api.Controllers
         }
 
         [HttpPut("EditCategory")]
-        public IActionResult EditCategory([FromBody] CategoryEditModel model)
+        public IActionResult EditCategory([FromBody] CategoryEditModel model, int creatorId)
         {
             try
             {
-                _categoryRepo.EditCategory(model.CatId, model.CatName, model.Acronym);
+                _categoryRepo.EditCategory(model.CatId, model.CatName, model.Acronym, creatorId);
                 return Ok($"{model.CatId} edited successfully.");
             }
             catch (Exception ex)
@@ -369,7 +386,7 @@ namespace account_api.Controllers
         }
 
         [HttpPost("AddCategory")]
-        public IActionResult AddCategory([FromBody] CatAdd model)
+        public IActionResult AddCategory([FromBody] CatAdd model, int creatorId)
         {
             if (model == null)
             {
@@ -385,7 +402,7 @@ namespace account_api.Controllers
 
             try
             {
-                _categoryRepo.AddCategory(category);
+                _categoryRepo.AddCategory(category, creatorId);
                 return Ok("Department added successfully");
             }
             catch (InvalidOperationException ex)
@@ -448,11 +465,11 @@ namespace account_api.Controllers
 
 
         [HttpPut("DeactivateLocation")]
-        public IActionResult DeactivateLocation(int locId)
+        public IActionResult DeactivateLocation(int locId, int creatorId)
         {
             try
             {
-                _categoryRepo.DeactivateLocation(locId);
+                _categoryRepo.DeactivateLocation(locId, creatorId);
                 return Ok($"'{locId}' deactivated successfully.");
             }
             catch (Exception ex)
@@ -463,11 +480,11 @@ namespace account_api.Controllers
 
 
         [HttpPut("ActivateLocation")]
-        public IActionResult ActivateLocation(int locId)
+        public IActionResult ActivateLocation(int locId, int creatorId)
         {
             try
             {
-                _categoryRepo.ActivateLocation(locId);
+                _categoryRepo.ActivateLocation(locId, creatorId);
                 return Ok($"'{locId}' activated successfully.");
             }
             catch (Exception ex)
@@ -477,11 +494,11 @@ namespace account_api.Controllers
         }
 
         [HttpPut("EditLocation")]
-        public IActionResult EditLocation([FromBody] LocationEditModel model)
+        public IActionResult EditLocation([FromBody] LocationEditModel model, int creatorId)
         {
             try
             {
-                _categoryRepo.EditLocation(model.LocId, model.LocName);
+                _categoryRepo.EditLocation(model.LocId, model.LocName, creatorId);
                 return Ok($"{model.LocId} edited successfully.");
             }
             catch (Exception ex)
@@ -491,7 +508,7 @@ namespace account_api.Controllers
         }
 
         [HttpPost("AddLocation")]
-        public IActionResult AddLocation([FromBody] LocAdd model)
+        public IActionResult AddLocation([FromBody] LocAdd model, int creatorId)
         {
             if (model == null)
             {
@@ -505,7 +522,7 @@ namespace account_api.Controllers
 
             try
             {
-                _categoryRepo.AddLocation(location);
+                _categoryRepo.AddLocation(location, creatorId);
                 return Ok("Location added successfully");
             }
             catch (InvalidOperationException ex)
@@ -568,11 +585,11 @@ namespace account_api.Controllers
 
 
         [HttpPut("DeactivateUniqueFeature")]
-        public IActionResult DeactivateUniqueFeature(int unqFeatId)
+        public IActionResult DeactivateUniqueFeature(int unqFeatId, int creatorId)
         {
             try
             {
-                _categoryRepo.DeactivateUniqueFeature(unqFeatId);
+                _categoryRepo.DeactivateUniqueFeature(unqFeatId, creatorId);
                 return Ok($"'{unqFeatId}' deactivated successfully.");
             }
             catch (Exception ex)
@@ -583,11 +600,11 @@ namespace account_api.Controllers
 
 
         [HttpPut("ActivateUniqueFeature")]
-        public IActionResult ActivateUniqueFeature(int unqFeatId)
+        public IActionResult ActivateUniqueFeature(int unqFeatId, int creatorId)
         {
             try
             {
-                _categoryRepo.ActivateUniqueFeature(unqFeatId);
+                _categoryRepo.ActivateUniqueFeature(unqFeatId, creatorId);
                 return Ok($"'{unqFeatId}' activated successfully.");
             }
             catch (Exception ex)
@@ -597,11 +614,11 @@ namespace account_api.Controllers
         }
 
         [HttpPut("EditUniqueFeature")]
-        public IActionResult EditUniqueFeature([FromBody] UniqueFeatureEditModel model)
+        public IActionResult EditUniqueFeature([FromBody] UniqueFeatureEditModel model, int creatorId)
         {
             try
             {
-                _categoryRepo.EditUniqueFeature(model.UnqFeatId, model.UnqFeatName);
+                _categoryRepo.EditUniqueFeature(model.UnqFeatId, model.UnqFeatName, creatorId);
                 return Ok($"{model.UnqFeatId} edited successfully.");
             }
             catch (Exception ex)
@@ -611,7 +628,7 @@ namespace account_api.Controllers
         }
 
         [HttpPost("AddUniqueFeature")]
-        public IActionResult AddUniqueFeature([FromBody] UnqFeatAdd model)
+        public IActionResult AddUniqueFeature([FromBody] UnqFeatAdd model, int creatorId)
         {
             if (model == null)
             {
@@ -626,7 +643,7 @@ namespace account_api.Controllers
 
             try
             {
-                _categoryRepo.AddUniqueFeature(unqFeature);
+                _categoryRepo.AddUniqueFeature(unqFeature, creatorId);
                 return Ok("Unique Feature added successfully");
             }
             catch (InvalidOperationException ex)
@@ -695,11 +712,11 @@ namespace account_api.Controllers
         }
 
         [HttpPut("DeactivateUniqueFeatureValue")]
-        public IActionResult DeactivateUniqueFeatureValue(int unqFeatVal_id)
+        public IActionResult DeactivateUniqueFeatureValue(int unqFeatVal_id, int creatorId)
         {
             try
             {
-                _categoryRepo.DeactivateUniqueFeatureValue(unqFeatVal_id);
+                _categoryRepo.DeactivateUniqueFeatureValue(unqFeatVal_id, creatorId);
                 return Ok($"'{unqFeatVal_id}' deactivated successfully.");
             }
             catch (Exception ex)
@@ -709,11 +726,11 @@ namespace account_api.Controllers
         }
 
         [HttpPut("ActivateUniqueFeatureValue")]
-        public IActionResult ActivateUniqueFeatureValue(int unqFeatVal_id)
+        public IActionResult ActivateUniqueFeatureValue(int unqFeatVal_id, int creatorId)
         {
             try
             {
-                _categoryRepo.ActivateUniqueFeatureValue(unqFeatVal_id);
+                _categoryRepo.ActivateUniqueFeatureValue(unqFeatVal_id, creatorId);
                 return Ok($"'{unqFeatVal_id}' activated successfully.");
             }
             catch (Exception ex)
@@ -723,11 +740,11 @@ namespace account_api.Controllers
         }
 
         [HttpPut("EditUniqueFeatureValue")]
-        public IActionResult EditUniqueFeatureValue([FromBody] UniqueFeatureValueEditModel model)
+        public IActionResult EditUniqueFeatureValue([FromBody] UniqueFeatureValueEditModel model, int creatorId)
         {
             try
             {
-                _categoryRepo.EditUniqueFeatureValue(model.UnqFeatValId, model.UnqFeatValName);
+                _categoryRepo.EditUniqueFeatureValue(model.UnqFeatValId, model.UnqFeatValName, creatorId);
                 return Ok($"{model.UnqFeatValId} edited successfully.");
             }
             catch (Exception ex)
@@ -737,7 +754,7 @@ namespace account_api.Controllers
         }
 
         [HttpPost("AddUniqueFeatureValue")]
-        public IActionResult AddUniqueFeatureValue([FromBody] UnqFeatValAdd model)
+        public IActionResult AddUniqueFeatureValue([FromBody] UnqFeatValAdd model, int creatorId)
         {
             if (model == null)
             {
@@ -753,7 +770,7 @@ namespace account_api.Controllers
 
             try
             {
-                _categoryRepo.AddUniqueFeatureValue(unqFeatValue);
+                _categoryRepo.AddUniqueFeatureValue(unqFeatValue, creatorId);
                 return Ok("Unique Feature Value added successfully");
             }
             catch (InvalidOperationException ex)

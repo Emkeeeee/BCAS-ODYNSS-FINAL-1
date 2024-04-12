@@ -13,6 +13,8 @@ const LocationPage = () => {
   const breadcrumb = [{ label: "Location List" }];
   const home = { icon: "pi pi-home" };
   const toast = useRef(null);
+  const userDataString = sessionStorage.getItem("userData");
+  const userData = JSON.parse(userDataString);
 
   const [location, setLocation] = useState([]);
   const [disabledLocation, setDisabledLocation] = useState([]);
@@ -112,7 +114,7 @@ const LocationPage = () => {
   const handleDeleteYes = () => {
     axios
       .put(
-        `http://localhost:5005/api/Category/DeactivateLocation?locId=${locationId}`
+        `http://localhost:5005/api/Category/DeactivateLocation?locId=${locationId}&creatorId=${userData.user_id}`
       )
       .then((response) => {
         console.log(response.data);
@@ -129,7 +131,7 @@ const LocationPage = () => {
   const handleRestoreYes = () => {
     axios
       .put(
-        `http://localhost:5005/api/Category/ActivateLocation?locId=${locationId}`
+        `http://localhost:5005/api/Category/ActivateLocation?locId=${locationId}&creatorId=${userData.user_id}`
       )
       .then((response) => {
         console.log(response.data);
@@ -174,7 +176,7 @@ const LocationPage = () => {
     e.preventDefault();
     try {
       const response = await axios.post(
-        "http://localhost:5005/api/Category/AddLocation",
+        `http://localhost:5005/api/Category/AddLocation?creatorId=${userData.user_id}`,
         locationValue,
         {
           headers: { "Content-Type": "application/json" },
@@ -199,7 +201,7 @@ const LocationPage = () => {
     e.preventDefault();
     try {
       const response = await axios.put(
-        "http://localhost:5005/api/Category/EditLocation",
+        `http://localhost:5005/api/Category/EditLocation?&creatorId=${userData.user_id}`,
         {
           locId: parseInt(locationEditValue.loc_id),
           locName: locationEditValue.location,

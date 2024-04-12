@@ -9,7 +9,7 @@
 
         // Additional properties for expanded row details
         public string item_uid { get; set; }
-
+        public int dept_id { get; set; }
         public string remarks { get; set; }
         public DateTime invTime { get; set; }
         public string invBy { get; set; }

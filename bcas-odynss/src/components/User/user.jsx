@@ -4,7 +4,6 @@ import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
-import { InputSwitch } from "primereact/inputswitch";
 import axios from "axios";
 
 function InsertForm() {

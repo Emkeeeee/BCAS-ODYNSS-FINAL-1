@@ -6,9 +6,9 @@
         public string username { get; set; }
         public string firstName { get; set; }
         public string lastName { get; set; }
-        public int department { get; set; }
+        public string department { get; set; }
         public string email { get; set; }
-        public DateTime createdAt { get; set; }
+        public string formatted_createdAt { get; set; }
         public bool isAdmin { get; set; }
     }
 }

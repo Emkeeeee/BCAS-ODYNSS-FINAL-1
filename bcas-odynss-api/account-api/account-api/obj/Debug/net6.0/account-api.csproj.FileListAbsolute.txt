@@ -52,3 +52,14 @@ D:\COLLEGE STUFF\CapStone1\DEVELOPMENT\BCAS-ODYNSS-FINAL\bcas-odynss-api\account
 D:\COLLEGE STUFF\CapStone1\DEVELOPMENT\BCAS-ODYNSS-FINAL\bcas-odynss-api\account-api\account-api\bin\Debug\net6.0\System.Drawing.Common.dll
 D:\COLLEGE STUFF\CapStone1\DEVELOPMENT\BCAS-ODYNSS-FINAL\bcas-odynss-api\account-api\account-api\bin\Debug\net6.0\zxing.dll
 D:\COLLEGE STUFF\CapStone1\DEVELOPMENT\BCAS-ODYNSS-FINAL\bcas-odynss-api\account-api\account-api\bin\Debug\net6.0\runtimes\win\lib\net6.0\Microsoft.Win32.SystemEvents.dll
+D:\COLLEGE STUFF\CapStone1\DEVELOPMENT\BCAS-ODYNSS-FINAL\bcas-odynss-api\account-api\account-api\bin\Debug\net6.0\System.Net.Http.Formatting.dll
+D:\COLLEGE STUFF\CapStone1\DEVELOPMENT\BCAS-ODYNSS-FINAL\bcas-odynss-api\account-api\account-api\bin\Debug\net6.0\System.Web.Http.dll
+D:\COLLEGE STUFF\CapStone1\DEVELOPMENT\BCAS-ODYNSS-FINAL\bcas-odynss-api\account-api\account-api\bin\Debug\net6.0\Newtonsoft.Json.Bson.dll
+D:\COLLEGE STUFF\CapStone1\DEVELOPMENT\BCAS-ODYNSS-FINAL\bcas-odynss-api\account-api\account-api\bin\Debug\net6.0\BouncyCastle.Cryptography.dll
+D:\COLLEGE STUFF\CapStone1\DEVELOPMENT\BCAS-ODYNSS-FINAL\bcas-odynss-api\account-api\account-api\bin\Debug\net6.0\MailKit.dll
+D:\COLLEGE STUFF\CapStone1\DEVELOPMENT\BCAS-ODYNSS-FINAL\bcas-odynss-api\account-api\account-api\bin\Debug\net6.0\MimeKit.dll
+D:\COLLEGE STUFF\CapStone1\DEVELOPMENT\BCAS-ODYNSS-FINAL\bcas-odynss-api\account-api\account-api\bin\Debug\net6.0\System.Formats.Asn1.dll
+D:\COLLEGE STUFF\CapStone1\DEVELOPMENT\BCAS-ODYNSS-FINAL\bcas-odynss-api\account-api\account-api\bin\Debug\net6.0\System.Security.Cryptography.Pkcs.dll
+D:\COLLEGE STUFF\CapStone1\DEVELOPMENT\BCAS-ODYNSS-FINAL\bcas-odynss-api\account-api\account-api\bin\Debug\net6.0\System.Text.Encoding.CodePages.dll
+D:\COLLEGE STUFF\CapStone1\DEVELOPMENT\BCAS-ODYNSS-FINAL\bcas-odynss-api\account-api\account-api\bin\Debug\net6.0\runtimes\win\lib\net6.0\System.Security.Cryptography.Pkcs.dll
+D:\COLLEGE STUFF\CapStone1\DEVELOPMENT\BCAS-ODYNSS-FINAL\bcas-odynss-api\account-api\account-api\bin\Debug\net6.0\runtimes\win\lib\net6.0\System.Text.Encoding.CodePages.dll

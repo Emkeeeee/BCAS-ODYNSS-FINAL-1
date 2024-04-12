@@ -27,6 +27,8 @@ const Department = () => {
     department: "",
     acronym: "",
   });
+  const userDataString = sessionStorage.getItem("userData");
+  const userData = JSON.parse(userDataString);
 
   const [visibleDelete, setvisibleDelete] = useState(false);
   const [visibleRestore, setVisibleRestore] = useState(false);
@@ -115,7 +117,7 @@ const Department = () => {
   const handleDeleteYes = () => {
     axios
       .put(
-        `http://localhost:5005/api/Category/DeactivateDepartment?deptId=${deptId}`
+        `http://localhost:5005/api/Category/DeactivateDepartment?deptId=${deptId}&creatorId=${userData.user_id}`
       )
       .then((response) => {
         console.log(response.data);
@@ -132,7 +134,7 @@ const Department = () => {
   const handleRestoreYes = () => {
     axios
       .put(
-        `http://localhost:5005/api/Category/ActivateDepartment?deptId=${deptId}`
+        `http://localhost:5005/api/Category/ActivateDepartment?deptId=${deptId}&creatorId=${userData.user_id}`
       )
       .then((response) => {
         console.log(response.data);
@@ -177,7 +179,7 @@ const Department = () => {
     e.preventDefault();
     try {
       const response = await axios.post(
-        "http://localhost:5005/api/Category/AddDepartment",
+        `http://localhost:5005/api/Category/AddDepartment?creatorId=${userData.user_id}`,
         deptValue,
         {
           headers: { "Content-Type": "application/json" },
@@ -204,7 +206,7 @@ const Department = () => {
     e.preventDefault();
     try {
       const response = await axios.put(
-        "http://localhost:5005/api/Category/EditDepartment",
+        `http://localhost:5005/api/Category/EditDepartment?creatorId=${userData.user_id}`,
         {
           deptId: parseInt(deptEditValue.dept_id),
           deptName: deptEditValue.department,

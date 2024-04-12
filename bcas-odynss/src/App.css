@@ -1,1 +1,74 @@
+#Navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+  }
+  
+  #Menu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 999;
+  }
+  
+  #Content {
+    margin-top: 50px; /* Adjust according to Navbar's height */
+    padding-left: 16rem; /* Adjust to compensate for the menu width */
+  }
 
+/* CSS */
+
+.form-container {
+    border: 1px solid #ccc; /* Add border styling */
+    padding: 20px; /* Add padding to create space between the border and form */
+    width: 500px; /* Set a fixed width for the form container */
+  margin: 0 auto; /* Center the form container horizontally */
+  }
+  .form-row {
+    margin-bottom: 20px; /* Add margin between each row */
+  }
+
+.menu-container {
+  width: 250px; /* Adjust the width as needed */
+  transition: transform 0.3s ease; /* Add smooth slide animation */
+}
+
+@media (max-width: 768px) {
+    .menu-container {
+      transform: translateX(-100%); /* Move the menu off-screen */
+      position: fixed; /* Ensure it stays fixed on the left */
+      top: 0; /* Position it at the top */
+      left: 0; /* Position it at the left */
+    }
+  
+    .menu-container.open {
+      transform: translateX(0); /* Bring the menu back into view */
+    }
+
+    #Content {
+        margin-top: 80px; /* Adjust according to Navbar's height */
+        padding-left: 0rem; /* Adjust to compensate for the menu width */
+      }
+
+      .picture-box {
+        display: none;
+      }
+
+      .small-screen-label {
+        display: none;
+    }
+
+    .dialog-box {
+        width: 100vw;
+    }
+  }
+
+
+  
+  .menu-content {
+    height: 100%; /* Ensure the menu takes full height of its container */
+    overflow-y: hidden; /* Add vertical scrollbar when content overflows */
+    margin-top: 80px
+  }

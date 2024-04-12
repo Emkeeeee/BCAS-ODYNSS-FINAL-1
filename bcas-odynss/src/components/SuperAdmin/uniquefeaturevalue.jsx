@@ -14,6 +14,8 @@ const UniqueFeatureValuePage = () => {
   const breadcrumb = [{ label: "User List" }];
   const home = { icon: "pi pi-home" };
   const toast = useRef(null);
+  const userDataString = sessionStorage.getItem("userData");
+  const userData = JSON.parse(userDataString);
 
   const [uniqueFeature, setUniqueFeature] = useState([]);
   const [selectedUniqueFeature, setSelectedUniqueFeature] = useState([]);
@@ -147,7 +149,7 @@ const UniqueFeatureValuePage = () => {
   const handleDeleteYes = () => {
     axios
       .put(
-        `http://localhost:5005/api/Category/DeactivateUniqueFeatureValue?unqFeatVal_id=${uniqueFeatureValId}`
+        `http://localhost:5005/api/Category/DeactivateUniqueFeatureValue?unqFeatVal_id=${uniqueFeatureValId}&creatorId=${userData.user_id}`
       )
       .then((response) => {
         console.log(response.data);
@@ -164,7 +166,7 @@ const UniqueFeatureValuePage = () => {
   const handleRestoreYes = () => {
     axios
       .put(
-        `http://localhost:5005/api/Category/ActivateUniqueFeatureValue?unqFeatVal_id=${uniqueFeatureValId}`
+        `http://localhost:5005/api/Category/ActivateUniqueFeatureValue?unqFeatVal_id=${uniqueFeatureValId}&creatorId=${userData.user_id}`
       )
       .then((response) => {
         console.log(response.data);
@@ -217,7 +219,7 @@ const UniqueFeatureValuePage = () => {
       };
 
       const response = await axios.post(
-        "http://localhost:5005/api/Category/AddUniqueFeatureValue",
+        `http://localhost:5005/api/Category/AddUniqueFeatureValue?creatorId=${userData.user_id}`,
         postData,
         {
           headers: { "Content-Type": "application/json" },
@@ -246,7 +248,7 @@ const UniqueFeatureValuePage = () => {
     e.preventDefault();
     try {
       const response = await axios.put(
-        `http://localhost:5005/api/Category/EditUniqueFeatureValue`,
+        `http://localhost:5005/api/Category/EditUniqueFeatureValue?creatorId=${userData.user_id}`,
         {
           unqFeatValId: parseInt(uniqueFeatureEditValue.unqFeatVal_id),
           unqFeatValName: uniqueFeatureEditValue.unqFeatVal,

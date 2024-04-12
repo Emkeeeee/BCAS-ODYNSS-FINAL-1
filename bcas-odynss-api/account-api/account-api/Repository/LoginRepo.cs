@@ -82,7 +82,7 @@ namespace account_api.Repository
                 issuer: issuer,
                 audience: audience,
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(15), // Token expires in 15 minutes, adjust as needed
+                expires: DateTime.UtcNow.AddMinutes(5), // Token expires in 5 minutes, adjust as needed
                 signingCredentials: creds
             );
 

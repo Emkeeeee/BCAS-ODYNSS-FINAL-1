@@ -16,44 +16,38 @@ namespace account_api.Repository
             _connectionString = connectionString;
         }
 
-        public async Task<int> AddItemAsync(InventoryModel item)
+        public async Task<int> AddItemAsync(InventoryModel item, int creatorId)
         {
             using (var connection = new SqlConnection(_connectionString))
             {
                 await connection.OpenAsync();
 
-                // Query to get the latest item_uid for the same item_name and item_desc
-                string latestUidQuery = @"
-            SELECT TOP 1 item_uid 
-            FROM Items 
-            WHERE item_name = @item_name 
-            AND item_desc = @item_desc 
-            ORDER BY item_uid DESC;";
+                string deptAcronymSql = "SELECT acronym FROM Department WHERE dept_id = @dept_id";
+                string catAcronymSql = "SELECT acronym FROM Category WHERE cat_id = @cat_id";
+                string subCatAcronymSql = "SELECT acronym FROM SubCategory WHERE subCat_id = @subCat_id";
 
-                // Execute the query
-                string latestUid = await connection.ExecuteScalarAsync<string>(latestUidQuery, new
+                string deptAcronym = await connection.ExecuteScalarAsync<string>(deptAcronymSql, new { dept_id = item.deptId });
+                string catAcronym = await connection.ExecuteScalarAsync<string>(catAcronymSql, new { cat_id = item.catId });
+                string subCatAcronym = await connection.ExecuteScalarAsync<string>(subCatAcronymSql, new { subCat_id = item.subCatId });
+
+                string itemUid = $"{item.itemName}_{deptAcronym}_{catAcronym}_{subCatAcronym}_{item.unqFeature}";
+
+                string nextUid = Guid.NewGuid().ToString("N").Substring(0, 8);
+
+                string itemLogAction = "Item Added"; // Set the action for item logging
+
+                string itemLogSql = @"
+            INSERT INTO ItemLogs (creator_id, action, item_uid, time)
+            VALUES (@creator_id, @action, @item_uid, @time);";
+
+                // Insert into ItemLogs table for logging
+                await connection.ExecuteAsync(itemLogSql, new
                 {
-                    item_name = item.itemName,
-                    item_desc = item.itemDesc
+                    creator_id = creatorId,
+                    action = itemLogAction,
+                    item_uid = itemUid + "_" + nextUid,
+                    time = DateTime.Now
                 });
-
-                int nextUidNumericPart = 1; // Default value if no previous records found
-
-                // If there's a latestUid, extract the numeric part and increment it
-                if (!string.IsNullOrEmpty(latestUid))
-                {
-                    // Extract the numeric part
-                    string numericPart = latestUid.Substring(latestUid.LastIndexOf('_') + 1);
-
-                    // Increment the numeric part
-                    if (int.TryParse(numericPart, out int parsedNumericPart))
-                    {
-                        nextUidNumericPart = parsedNumericPart + 1;
-                    }
-                }
-
-                // Format the nextUid with leading zeros
-                string nextUid = $"_{nextUidNumericPart:D5}";
 
                 string sql = @"
             INSERT INTO Items (item_uid, item_name, item_desc, remarks, dept_id, cat_id, subCat_id, unqFeat_id, unqFeat, invBy, invTime, borrowBy, loc_id, isOut, isBroken, isActive)
@@ -62,7 +56,7 @@ namespace account_api.Repository
 
                 return await connection.ExecuteScalarAsync<int>(sql, new
                 {
-                    item_uid = item.itemUid + nextUid,
+                    item_uid = itemUid + "_" + nextUid,
                     item_name = item.itemName,
                     item_desc = item.itemDesc,
                     remark = item.remarks,
@@ -82,39 +76,129 @@ namespace account_api.Repository
             }
         }
 
-        public void DeactivateItem(string itemUID)
+        public void DeactivateItem(string itemUID, int creatorId)
         {
             using (IDbConnection db = new SqlConnection(_connectionString))
             {
-                string sql = "UPDATE Items SET isActive = 0 WHERE item_uid = @ItemUID";
+                string updateSql = "UPDATE Items SET isActive = 0 WHERE item_uid = @ItemUID";
+                db.Execute(updateSql, new { ItemUID = itemUID });
+
+                string action = "Item Deactivated";
+                string logSql = @"
+                    INSERT INTO ItemLogs (item_uid, action, time, creator_id)
+                    VALUES (@item_uid, @action, @time, @creator_id);";
+                db.Execute(logSql, new
+                {
+                    item_uid = itemUID,
+                    action = action,
+                    time = DateTime.Now,
+                    creator_id = creatorId
+                });
+            }
+        }
+
+        public void ActivateItem(string itemUID, int creatorId)
+        {
+            using (IDbConnection db = new SqlConnection(_connectionString))
+            {
+                string updateSql = "UPDATE Items SET isActive = 1 WHERE item_uid = @ItemUID";
+                db.Execute(updateSql, new { ItemUID = itemUID });
+
+                string action = "Item Activated";
+                string logSql = @"
+                    INSERT INTO ItemLogs (item_uid, action, time, creator_id)
+                    VALUES (@item_uid, @action, @time, @creator_id);";
+                db.Execute(logSql, new
+                {
+                    item_uid = itemUID,
+                    action = action,
+                    time = DateTime.Now,
+                    creator_id = creatorId
+                });
+            }
+        }
+
+        public void BorrowItem(string itemUID, string borrower, int locId, int userId)
+        {
+            using (IDbConnection db = new SqlConnection(_connectionString))
+            {
+                db.Open();
+                using (var transaction = db.BeginTransaction())
+                {
+                    try
+                    {
+                        // Update Items table to mark the item as borrowed
+                        string updateItemsSql = "UPDATE Items SET borrowBy = @Borrower, loc_id = @Location, isOut = 1 WHERE item_uid = @ItemUID;";
+                        db.Execute(updateItemsSql, new { ItemUID = itemUID, Borrower = borrower, Location = locId }, transaction);
+
+                        // Insert a record into BorrowHistory table
+                        string insertHistorySql = "INSERT INTO BorrowHistory (user_id, item_uid, brw_time, borrower, loc_id, isActive) VALUES (@UserId, @ItemUID, GETDATE(), @Borrower, @Location, 1);";
+                        db.Execute(insertHistorySql, new { UserId = userId, ItemUID = itemUID, Borrower = borrower, Location = locId }, transaction);
+
+                        transaction.Commit();
+                    }
+                    catch (Exception)
+                    {
+                        // Handle any exceptions
+                        transaction.Rollback();
+                        throw;
+                    }
+                }
+            }
+        }
+
+        public void ReturnItem(string itemUID, int brw_id, int loc_id, bool isBroken)
+        {
+            using (IDbConnection db = new SqlConnection(_connectionString))
+            {
+                // Update the Items table to mark the item as returned
+                string updateItemsSql = "UPDATE Items SET borrowBy = 'N/A', loc_id = @LocId, isBroken = @IsBroken, isOut = 0 WHERE item_uid = @ItemUID;";
+                db.Execute(updateItemsSql, new { ItemUID = itemUID, LocId = loc_id, IsBroken = isBroken });
+
+                // Update the BorrowHistory table to mark the corresponding borrowing record as inactive
+                string updateBorrowHistorySql = "UPDATE BorrowHistory SET isActive = 0 WHERE brw_id = @BorrowID;";
+                db.Execute(updateBorrowHistorySql, new { BorrowID = brw_id });
+
+                // Insert a new record into ReturnHistory table
+                string insertReturnHistorySql = "INSERT INTO ReturnHistory (user_id, item_uid, rt_time, borrower, loc_id, isBroken) " +
+                                                "VALUES ((SELECT user_id FROM BorrowHistory WHERE brw_id = @BorrowID), " +
+                                                "@ItemUID, GETDATE(), " +
+                                                "(SELECT borrower FROM BorrowHistory WHERE brw_id = @BorrowID), " +
+                                                "@LocId, @IsBroken);";
+                db.Execute(insertReturnHistorySql, new { BorrowID = brw_id, ItemUID = itemUID, LocId = loc_id, IsBroken = isBroken });
+            }
+        }
+
+        public void RestoreItem(string itemUID)
+        {
+            using (IDbConnection db = new SqlConnection(_connectionString))
+            {
+                string sql = "UPDATE Items SET isActive = 1 WHERE item_uid = @ItemUID";
                 db.Execute(sql, new { ItemUID = itemUID });
             }
         }
 
-        public void ActivateItem(string itemUID)
+        public async Task<IEnumerable<ItemLogModel>> GetItemLogs()
         {
-            using (IDbConnection db = new SqlConnection(_connectionString))
+            using (var connection = new SqlConnection(_connectionString))
             {
-                string sql = "UPDATE Items SET isActive = 0 WHERE item_uid = @ItemUID";
-                db.Execute(sql, new { ItemUID = itemUID });
-            }
-        }
+                await connection.OpenAsync();
 
-        public void BorrowItem(string itemUID, string borrower, int locId)
-        {
-            using (IDbConnection db = new SqlConnection(_connectionString))
-            {
-                string sql = "UPDATE Items SET borrowBy = @Borrower, loc_id = @Location, isOut = 1 WHERE item_uid = @ItemUID;";
-                db.Execute(sql, new { ItemUID = itemUID, Borrower = borrower, Location = locId });
-            }
-        }
+                string sql = @"
+                        SELECT 
+                            il.itemlog_id,
+                            il.item_uid, 
+                            u.firstname + ' ' + u.lastname + ' of ' +d.department as dept_handler,
+                            il.action, 
+                            FORMAT(time, 'dd-MM-yyyy hh:mm:ss tt') AS formatted_time
+                        FROM 
+                            ItemLogs il
+							LEFT JOIN
+							Users u ON il.creator_id = u.user_id
+							LEFT JOIN
+							Department d ON u.department = d.dept_id"; 
 
-        public void ReturnItem(string itemUID)
-        {
-            using (IDbConnection db = new SqlConnection(_connectionString))
-            {
-                string sql = "UPDATE Items SET borrowBy = 'N/A', isOut = 0 WHERE item_uid = @ItemUID;";
-                db.Execute(sql, new { ItemUID = itemUID});
+                return await connection.QueryAsync<ItemLogModel>(sql);
             }
         }
     }

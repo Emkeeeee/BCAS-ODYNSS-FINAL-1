@@ -25,6 +25,9 @@ const Register = () => {
     { label: "Admin", value: "true" },
   ];
   const isAdmin = userType === "true";
+  const userDataString = sessionStorage.getItem("userData");
+  const userData = JSON.parse(userDataString);
+  const [creatorId, setCreatorId] = useState([]);
 
   const [passwordMatch, setPasswordMatch] = useState(true); // State to track password match
 
@@ -42,6 +45,7 @@ const Register = () => {
 
   useEffect(() => {
     fetchDepartments();
+    setCreatorId(userData.user_id);
   }, []);
 
   const fetchDepartments = async () => {
@@ -78,12 +82,16 @@ const Register = () => {
 
     // Send a POST request to the API endpoint with the token included in the headers
     axios
-      .post("http://localhost:5005/api/Accounts/Insert", accountData, {
-        headers: {
-          Authorization: `Bearer ${jwtToken}`,
-          "Content-Type": "application/json",
-        },
-      })
+      .post(
+        `http://localhost:5005/api/Accounts/Insert?creatorId=${creatorId}`,
+        accountData,
+        {
+          headers: {
+            Authorization: `Bearer ${jwtToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      )
       .then((response) => {
         console.log(response.data);
 
@@ -170,103 +178,133 @@ const Register = () => {
     <div>
       <BreadCrumb model={breadcrumb} home={home} />
       <Toast ref={toast} />
-      <form onSubmit={handleSubmit}>
-        <div className="flex justify-content-center flex-wrap mt-2 mb-8 ">
-          <div className="flex flex-column row-gap-4 justify-content-center ">
-            <h1 className="text-center">Register</h1>
-            <span className="p-float-label">
-              <InputText
-                id="username"
-                value={username}
-                keyfilter="alphanum"
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-12"
-              />
-              <label htmlFor="username">Username</label>
-            </span>
+      <div className="form-container">
+        <form onSubmit={handleSubmit}>
+          <div className="flex justify-content-center flex-wrap mt-2 mb-8">
+            <div className="flex flex-column row-gap-4 justify-content-center">
+              <h1 className="text-center">Register</h1>
 
-            <span className="p-float-label">
-              <Password
-                inputId="password"
-                value={password}
-                keyfilter="alphanum"
-                onChange={handlePasswordChange}
-                toggleMask
-              />
-              <label htmlFor="password">Password</label>
-            </span>
+              <div className="input-group">
+                <div className="form-row">
+                  <span className="p-float-label">
+                    <InputText
+                      id="username"
+                      value={username}
+                      keyfilter="alphanum"
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="w-12"
+                    />
+                    <label htmlFor="username">Username</label>
+                  </span>
+                </div>
 
-            <span className="p-float-label">
-              <Password
-                inputId="confirmpass"
-                value={confirmPass}
-                keyfilter="alphanum"
-                onChange={handleConfirmPassChange}
-                feedback={false}
-                className={!passwordMatch ? "p-invalid" : ""}
-                toggleMask
-              />
-              <label htmlFor="password">Confirm Password</label>
-            </span>
-            {!passwordMatch && (
-              <small className="p-error">Passwords do not match.</small>
-            )}
+                <div className="form-row">
+                  <span className="p-float-label">
+                    <Password
+                      inputId="password"
+                      value={password}
+                      keyfilter="alphanum"
+                      onChange={handlePasswordChange}
+                      toggleMask
+                    />
+                    <label htmlFor="password">Password</label>
+                  </span>
+                </div>
 
-            <span className="p-float-label">
-              <InputText
-                id="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-12"
-                keyfilter="email"
-              />
-              <label htmlFor="email">Email</label>
-            </span>
+                <div className="form-row">
+                  <span className="p-float-label">
+                    <Password
+                      inputId="confirmpass"
+                      value={confirmPass}
+                      keyfilter="alphanum"
+                      onChange={handleConfirmPassChange}
+                      feedback={false}
+                      className={!passwordMatch ? "p-invalid" : ""}
+                      toggleMask
+                    />
+                    <label htmlFor="confirmpass">Confirm Password</label>
+                    <div>
+                      {!passwordMatch && (
+                        <small className="p-error">
+                          Passwords do not match.
+                        </small>
+                      )}
+                    </div>
+                  </span>
+                </div>
 
-            <span className="p-float-label">
-              <InputText
-                id="firstName"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                className="w-12"
-              />
-              <label htmlFor="email">First Name</label>
-            </span>
+                <div className="form-row">
+                  <span className="p-float-label">
+                    <InputText
+                      id="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-12"
+                      keyfilter="email"
+                    />
+                    <label htmlFor="email">Email</label>
+                  </span>
+                </div>
 
-            <span className="p-float-label">
-              <InputText
-                id="lastName"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                className="w-12"
-              />
-              <label htmlFor="email">Last Name</label>
-            </span>
+                <div className="form-row">
+                  <span className="p-float-label">
+                    <InputText
+                      id="firstName"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      className="w-12"
+                    />
+                    <label htmlFor="firstName">First Name</label>
+                  </span>
+                </div>
 
-            <Dropdown
-              value={userType}
-              onChange={(e) => setUserType(e.value)}
-              options={user_type}
-              placeholder="Select a User Type"
-            />
+                <div className="form-row">
+                  <span className="p-float-label">
+                    <InputText
+                      id="lastName"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      className="w-12"
+                    />
+                    <label htmlFor="lastName">Last Name</label>
+                  </span>
+                </div>
 
-            <Dropdown
-              value={selectedDepartment}
-              onChange={(e) => setSelectedDepartment(e.value)}
-              options={department}
-              optionLabel="label"
-              placeholder="Select a Department"
-            />
+                <div className="form-row">
+                  <fieldset>
+                    <legend>User Details</legend>
 
-            <Button
-              type="submit"
-              label="Register"
-              icon="pi pi-check"
-              disabled={!passwordMatch}
-            />
+                    <Dropdown
+                      value={userType}
+                      onChange={(e) => setUserType(e.value)}
+                      options={user_type}
+                      placeholder="Select a User Type"
+                      className="mr-2"
+                    />
+
+                    <Dropdown
+                      value={selectedDepartment}
+                      onChange={(e) => setSelectedDepartment(e.value)}
+                      options={department}
+                      optionLabel="label"
+                      placeholder="Select a Department"
+                    />
+                  </fieldset>
+                </div>
+
+                <div className="flex form-row justify-content-center">
+                  <Button
+                    type="submit"
+                    label="Register"
+                    icon="pi pi-check"
+                    disabled={!passwordMatch}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
   );
 };
